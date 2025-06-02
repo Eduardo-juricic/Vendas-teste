@@ -1,5 +1,4 @@
-// Admin.jsx
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import {
   collection,
   addDoc,
@@ -12,7 +11,7 @@ import {
 import { db, auth } from "../FirebaseConfig";
 import { signOut } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
-import { ChevronDownIcon, ChevronUpIcon } from "@heroicons/react/24/outline";
+import { ChevronDownIcon, ChevronUpIcon } from "@heroicons/react/24/outline"; //
 
 const Admin = () => {
   const [produtos, setProdutos] = useState([]);
@@ -21,10 +20,11 @@ const Admin = () => {
     nome: "",
     descricao: "",
     preco: "",
-    imagem: null, // This will hold the File object for new uploads
-    currentImageUrl: "", // New state to hold the existing image URL
+    imagem: null,
+    currentImageUrl: "",
     destaque_curto: "",
     preco_promocional: "",
+    categoria: "", // NOVO CAMPO: Categoria do produto
   });
   const [editandoId, setEditandoId] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -38,6 +38,15 @@ const Admin = () => {
   const produtosRef = collection(db, "produtos");
   const pedidosRef = collection(db, "pedidos");
 
+  // Definindo as categorias
+  const categoriasProduto = [
+    "Perfumes",
+    "Maquiagens",
+    "Hidratantes",
+    "Infantil",
+    "Outros",
+  ];
+
   const buscarProdutos = async () => {
     const snapshot = await getDocs(produtosRef);
     const lista = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
@@ -45,6 +54,7 @@ const Admin = () => {
   };
 
   const buscarPedidos = async () => {
+    // ... (lógica de buscarPedidos mantida igual)
     try {
       const snapshot = await getDocs(pedidosRef);
       const listaPedidos = snapshot.docs.map((doc) => ({
@@ -68,6 +78,7 @@ const Admin = () => {
   };
 
   const handleLogout = async () => {
+    // ... (lógica de handleLogout mantida igual)
     try {
       await signOut(auth);
       console.log("Usuário deslogado com sucesso!");
@@ -78,6 +89,7 @@ const Admin = () => {
   };
 
   useEffect(() => {
+    // ... (lógica do useEffect mantida igual, incluindo busca de config do Cloudinary)
     buscarProdutos();
     buscarPedidos();
 
@@ -103,13 +115,18 @@ const Admin = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!form.categoria) {
+      // Validação simples para categoria
+      alert("Por favor, selecione uma categoria para o produto.");
+      return;
+    }
     setUploading(true);
 
     try {
-      let imageUrl = form.currentImageUrl; // Start with the current image URL if editing
+      let imageUrl = form.currentImageUrl;
 
       if (form.imagem) {
-        // If a new image file is selected
+        // ... (lógica de upload da imagem para Cloudinary mantida igual)
         const formData = new FormData();
         formData.append("file", form.imagem);
         formData.append(
@@ -137,7 +154,6 @@ const Admin = () => {
             }`
           );
         }
-
         const data = await response.json();
         imageUrl = data.secure_url;
       }
@@ -146,11 +162,12 @@ const Admin = () => {
         nome: form.nome,
         descricao: form.descricao,
         preco: Number(form.preco),
-        imagem: imageUrl, // Use the updated imageUrl
+        imagem: imageUrl,
         destaque_curto: form.destaque_curto,
         preco_promocional: form.preco_promocional
           ? Number(form.preco_promocional)
           : 0,
+        categoria: form.categoria, // ADICIONADO: Salvar categoria
       };
 
       if (editandoId) {
@@ -161,17 +178,17 @@ const Admin = () => {
         await addDoc(produtosRef, produtoData);
       }
 
-      // Reset form fields after submission
       setForm({
+        // Reset do formulário, incluindo categoria
         nome: "",
         descricao: "",
         preco: "",
         imagem: null,
-        currentImageUrl: "", // Clear current image URL as well
+        currentImageUrl: "",
         destaque_curto: "",
         preco_promocional: "",
+        categoria: "", // ADICIONADO: Resetar categoria
       });
-      // Clear the file input visually
       if (document.querySelector('input[type="file"]')) {
         document.querySelector('input[type="file"]').value = "";
       }
@@ -185,6 +202,7 @@ const Admin = () => {
   };
 
   const deletar = async (id) => {
+    // ... (lógica de deletar mantida igual)
     if (window.confirm("Tem certeza que deseja excluir este produto?")) {
       const ref = doc(db, "produtos", id);
       await deleteDoc(ref);
@@ -193,6 +211,7 @@ const Admin = () => {
   };
 
   const deletarPedido = async (id) => {
+    // ... (lógica de deletarPedido mantida igual)
     if (
       window.confirm(
         `Tem certeza que deseja excluir o pedido ID: ${id}? Esta ação não pode ser desfeita.`
@@ -215,17 +234,19 @@ const Admin = () => {
       nome: produto.nome,
       descricao: produto.descricao,
       preco: produto.preco,
-      imagem: null, // Keep this as null for new file selection
-      currentImageUrl: produto.imagem || "", // Set the existing image URL
+      imagem: null,
+      currentImageUrl: produto.imagem || "",
       destaque_curto: produto.destaque_curto || "",
       preco_promocional: produto.preco_promocional || "",
-      id: produto.id,
+      categoria: produto.categoria || "", // ADICIONADO: Carregar categoria para edição
+      // id: produto.id, // Não é estritamente necessário no form state se editandoId já existe
     });
     setEditandoId(produto.id);
     window.scrollTo(0, 0);
   };
 
   const definirDestaque = async (id) => {
+    // ... (lógica de definirDestaque mantida igual)
     const produtoParaAtualizar = produtos.find((p) => p.id === id);
     const novoEstadoDestaque = !produtoParaAtualizar?.destaque;
     const updatesBatch = [];
@@ -258,7 +279,7 @@ const Admin = () => {
         </button>
       </div>
 
-      {/* Seção de Pedidos Recebidos */}
+      {/* Seção de Pedidos Recebidos ... (mantida igual) ... */}
       <div className="mt-10">
         <div
           className="flex justify-between items-center mb-6 cursor-pointer"
@@ -285,6 +306,7 @@ const Admin = () => {
                   key={pedido.id}
                   className="border p-6 rounded-lg shadow-lg bg-white"
                 >
+                  {/* ... (Estrutura interna do card de pedido mantida igual) ... */}
                   <div className="flex flex-col sm:flex-row justify-between items-start mb-3">
                     <h3 className="font-bold text-xl text-blue-700 mb-2 sm:mb-0">
                       Pedido ID: {pedido.id}
@@ -339,7 +361,6 @@ const Admin = () => {
                       </div>
                     )}
                   </div>
-
                   <div className="mb-4 p-4 bg-blue-50 rounded-md border border-blue-200">
                     <h4 className="font-semibold text-md text-blue-800 mb-2">
                       Detalhes do Cliente:
@@ -359,7 +380,6 @@ const Admin = () => {
                       <strong>CPF:</strong> {pedido.cliente?.cpf || "N/A"}
                     </p>
                   </div>
-
                   <div className="mb-4 p-4 bg-green-50 rounded-md border border-green-200">
                     <h4 className="font-semibold text-md text-green-800 mb-2">
                       Endereço de Entrega:
@@ -380,7 +400,6 @@ const Admin = () => {
                     </p>
                     <p>CEP: {pedido.cliente?.endereco?.cep || "N/A"}</p>
                   </div>
-
                   <div className="mb-4">
                     <h4 className="font-semibold text-md text-gray-800 mb-2">
                       Itens do Pedido:
@@ -395,7 +414,6 @@ const Admin = () => {
                       ))}
                     </ul>
                   </div>
-
                   {pedido.observacao && (
                     <div className="mt-4 p-4 bg-yellow-50 rounded-md border border-yellow-200">
                       <h4 className="font-semibold text-md text-yellow-800 mb-1">
@@ -406,7 +424,6 @@ const Admin = () => {
                       </p>
                     </div>
                   )}
-
                   <div className="mt-6 pt-4 border-t border-gray-200 flex justify-end">
                     <button
                       onClick={() => deletarPedido(pedido.id)}
@@ -430,7 +447,7 @@ const Admin = () => {
         <h2 className="text-2xl font-semibold mb-4 text-gray-700">
           {editandoId ? "Editar Produto" : "Adicionar Novo Produto"}
         </h2>
-        <textarea
+        <input // Alterado para input para nomes mais curtos
           type="text"
           placeholder="Nome do Produto"
           value={form.nome}
@@ -445,6 +462,33 @@ const Admin = () => {
           className="border p-2 w-full rounded h-24 resize-y"
           required
         />
+        {/* CAMPO DE CATEGORIA ADICIONADO ABAIXO */}
+        <div>
+          <label
+            htmlFor="categoria"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
+            Categoria:
+          </label>
+          <select
+            id="categoria"
+            name="categoria"
+            value={form.categoria}
+            onChange={(e) => setForm({ ...form, categoria: e.target.value })}
+            className="border p-2 w-full rounded bg-white" // Adicionado bg-white para consistência
+            required
+          >
+            <option value="" disabled>
+              Selecione uma categoria
+            </option>
+            {categoriasProduto.map((cat) => (
+              <option key={cat} value={cat}>
+                {cat}
+              </option>
+            ))}
+          </select>
+        </div>
+        {/* FIM DO CAMPO DE CATEGORIA */}
         <input
           type="number"
           placeholder="Preço (ex: 99.99)"
@@ -480,7 +524,7 @@ const Admin = () => {
           onChange={handleFileChange}
           className="border p-2 w-full rounded file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
         />
-        {form.currentImageUrl && ( // Display current image if exists
+        {form.currentImageUrl && (
           <div className="mt-2">
             <p className="text-sm text-gray-600 mb-1">Imagem atual:</p>
             <img
@@ -511,9 +555,10 @@ const Admin = () => {
                 descricao: "",
                 preco: "",
                 imagem: null,
-                currentImageUrl: "", // Clear on cancel
+                currentImageUrl: "",
                 destaque_curto: "",
                 preco_promocional: "",
+                categoria: "", // ADICIONADO: Resetar categoria ao cancelar edição
               });
               if (document.querySelector('input[type="file"]')) {
                 document.querySelector('input[type="file"]').value = "";
@@ -552,6 +597,12 @@ const Admin = () => {
                   <h3 className="font-bold text-xl text-gray-800">
                     {produto.nome}
                   </h3>
+                  {/* ADICIONADO: Exibição da Categoria */}
+                  {produto.categoria && (
+                    <span className="text-xs font-medium text-white bg-teal-500 px-2 py-0.5 rounded-full inline-block mb-1 mr-2">
+                      {produto.categoria}
+                    </span>
+                  )}
                   {produto.destaque_curto && (
                     <p className="text-sm text-gray-500 italic mb-1">
                       {produto.destaque_curto}
@@ -560,6 +611,7 @@ const Admin = () => {
                   <p className="text-gray-700 text-sm mb-1 line-clamp-2">
                     {produto.descricao}
                   </p>
+                  {/* ... (Lógica de preço mantida igual) ... */}
                   {produto.preco_promocional > 0 &&
                   parseFloat(produto.preco_promocional) <
                     parseFloat(produto.preco) ? (
@@ -582,6 +634,7 @@ const Admin = () => {
                 </div>
               </div>
               <div className="flex flex-wrap gap-2 justify-end w-full md:w-auto md:ml-4 flex-shrink-0">
+                {/* ... (Botões de ação mantidos iguais) ... */}
                 <button
                   onClick={() => editar(produto)}
                   className="bg-yellow-500 text-white px-4 py-2 rounded-md hover:bg-yellow-600 transition-colors duration-200 text-sm"
