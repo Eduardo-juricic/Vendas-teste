@@ -1,9 +1,9 @@
 // src/pages/AllProductsPage.jsx
 import React, { useState, useEffect } from "react";
 import { collection, getDocs } from "firebase/firestore";
-import { db } from "../FirebaseConfig"; // Ajuste o caminho se necessário
-import { useCart } from "../context/CartContext"; // Ajuste o caminho se necessário
-import Notification from "../components/Notification"; // Ajuste o caminho se necessário
+import { db } from "../FirebaseConfig";
+import { useCart } from "../context/CartContext";
+import Notification from "../components/Notification";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import {
@@ -13,9 +13,8 @@ import {
   X as XIcon,
 } from "lucide-react";
 
-// Categorias baseadas no seu Admin.jsx
 const categoriasDisponiveis = [
-  "Todos", // Opção para ver todas as categorias
+  "Todos",
   "Perfumes",
   "Maquiagens",
   "Hidratantes",
@@ -23,7 +22,6 @@ const categoriasDisponiveis = [
   "Outros",
 ];
 
-// Card Placeholder para o estado de Loading
 const ProductCardPlaceholder = () => (
   <div className="group bg-nude-white rounded-xl shadow-lg overflow-hidden flex flex-col animate-pulse">
     <div className="aspect-[4/5] w-full bg-nude-beige rounded-t-xl"></div>
@@ -48,6 +46,12 @@ function AllProductsPage() {
   const [selectedCategory, setSelectedCategory] = useState("Todos");
   const [searchTerm, setSearchTerm] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+  const [isButtonHovered, setIsButtonHovered] = useState({});
+
+  // NOVO: useEffect para rolar a página para o topo quando o componente montar
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []); // Array de dependências vazio para rodar apenas na montagem
 
   useEffect(() => {
     const fetchAllProducts = async () => {
@@ -61,7 +65,7 @@ function AllProductsPage() {
           ...doc.data(),
         }));
         setAllProducts(productsList);
-        setFilteredProducts(productsList); // Inicialmente, mostra todos
+        setFilteredProducts(productsList);
       } catch (err) {
         console.error("Erro ao buscar todos os produtos:", err);
         setError(err);
@@ -126,6 +130,16 @@ function AllProductsPage() {
     );
   }
 
+  const baseButtonStyle = {
+    backgroundColor: "#BF9B7A",
+    color: "#FFFFFF",
+    transition: "background-color 0.3s ease-in-out, transform 0.1s ease-in-out",
+  };
+
+  const hoverButtonStyle = {
+    backgroundColor: "#A98A70",
+  };
+
   return (
     <div className="bg-nude-off-white min-h-screen">
       <motion.div
@@ -143,10 +157,8 @@ function AllProductsPage() {
           Nossos Produtos
         </motion.h1>
 
-        {/* Controles de Filtro e Busca */}
         <div className="mb-10 md:mb-12 p-6 bg-nude-white rounded-xl shadow-lg">
           <div className="flex flex-col md:flex-row gap-6 items-center">
-            {/* Botão para mostrar/esconder filtros em mobile */}
             <button
               onClick={() => setShowFilters(!showFilters)}
               className="md:hidden bg-nude-gold text-nude-white px-4 py-2 rounded-lg font-sans flex items-center justify-center w-full mb-4"
@@ -154,8 +166,6 @@ function AllProductsPage() {
               <ListFilter size={18} className="mr-2" />{" "}
               {showFilters ? "Esconder Filtros" : "Mostrar Filtros"}
             </button>
-
-            {/* Filtro de Categoria */}
             <div
               className={`flex-col md:flex-row md:flex items-center gap-3 ${
                 showFilters ? "flex" : "hidden"
@@ -186,8 +196,6 @@ function AllProductsPage() {
                 ))}
               </select>
             </div>
-
-            {/* Barra de Busca */}
             <div className="relative flex-grow w-full md:w-auto mt-4 md:mt-0 md:ml-auto">
               <input
                 type="text"
@@ -216,8 +224,7 @@ function AllProductsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-6 gap-y-10">
             {[...Array(8)].map((_, i) => (
               <ProductCardPlaceholder key={i} />
-            ))}{" "}
-            {/* Mais placeholders para a página */}
+            ))}
           </div>
         ) : filteredProducts.length === 0 ? (
           <div className="text-center py-10">
@@ -240,27 +247,20 @@ function AllProductsPage() {
             </motion.p>
           </div>
         ) : (
-          <motion.div
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-6 gap-y-10"
-            // variants={containerVariantsAnim} // Opcional: para animar o container como um todo
-            // initial="hidden"
-            // animate="visible"
-          >
+          <motion.div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-6 gap-y-10">
             {filteredProducts.map((product, index) => (
               <motion.div
                 key={product.id}
                 className="group bg-nude-white rounded-xl shadow-lg
-                           hover:shadow-nude-gold/10 hover:shadow-2xl
-                           transition-all duration-300 ease-out overflow-hidden flex flex-col
-                           border border-transparent hover:border-nude-gold/30"
+                          hover:shadow-nude-gold/10 hover:shadow-2xl
+                          transition-all duration-300 ease-out overflow-hidden flex flex-col
+                          border border-transparent hover:border-nude-gold/30"
                 variants={cardVariants}
                 custom={index}
                 initial="hidden"
-                animate="visible" // Usar animate em vez de whileInView para garantir animação ao filtrar
+                animate="visible"
               >
                 <Link to={`/produto/${product.id}`} className="block">
-                  {" "}
-                  {/* Link para detalhes do produto */}
                   <div className="relative aspect-[4/5] w-full overflow-hidden">
                     <img
                       src={
@@ -307,10 +307,25 @@ function AllProductsPage() {
                   </p>
                   <button
                     onClick={() => handleAddToCart(product)}
-                    className="mt-auto bg-nude-gold text-nude-white hover:bg-nude-gold-dark
-                              font-sans font-semibold py-3 px-6 rounded-lg transition-colors duration-300
-                              focus:outline-none focus:ring-2 focus:ring-nude-gold-light focus:ring-opacity-70
+                    className="mt-auto font-sans font-semibold py-3 px-6 rounded-lg
+                              focus:outline-none focus:ring-2 focus:ring-opacity-70
                               w-full flex items-center justify-center gap-2 group-hover:scale-105 transform"
+                    style={{
+                      ...baseButtonStyle,
+                      ...(isButtonHovered[product.id] ? hoverButtonStyle : {}),
+                    }}
+                    onMouseEnter={() =>
+                      setIsButtonHovered((prev) => ({
+                        ...prev,
+                        [product.id]: true,
+                      }))
+                    }
+                    onMouseLeave={() =>
+                      setIsButtonHovered((prev) => ({
+                        ...prev,
+                        [product.id]: false,
+                      }))
+                    }
                   >
                     <ShoppingCart size={18} />
                     Adicionar

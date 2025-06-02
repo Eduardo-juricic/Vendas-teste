@@ -1,12 +1,12 @@
 import { motion } from "framer-motion";
 import { ChevronDown, Sparkles } from "lucide-react";
-import { useMemo } from "react"; // Apenas useMemo é necessário aqui
+import { useMemo } from "react";
+import { useNavigate } from "react-router-dom"; // Importar useNavigate
 
 // Componente para uma faísca dourada individual
 const GoldenSparkle = ({ initialX, initialY, delay, size }) => {
   return (
     <motion.div
-      // Usando cor hexadecimal diretamente para as faíscas
       className="absolute"
       style={{
         left: `${initialX}%`,
@@ -30,7 +30,9 @@ const GoldenSparkle = ({ initialX, initialY, delay, size }) => {
   );
 };
 
-const Hero = ({ scrollToProducts }) => {
+const Hero = () => {
+  const navigate = useNavigate(); // Inicializar useNavigate
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -61,15 +63,15 @@ const Hero = ({ scrollToProducts }) => {
   const subtitleText =
     "Explore coleções exclusivas de perfumes e maquiagens que realçam o seu brilho natural e singular.";
 
-  const numSparkles = 30; // Aumentei um pouco para mais visibilidade
+  const numSparkles = 30;
 
   const sparklesData = useMemo(() => {
     return Array.from({ length: numSparkles }).map(() => ({
       id: Math.random().toString(36).substring(7),
-      initialX: Math.random() * 100, // Espalhar por toda a largura
-      initialY: Math.random() * 100, // Espalhar por toda a altura
-      delay: Math.random() * 4, // Aumentar um pouco o range de delay
-      size: Math.random() * 10 + 6, // Ajustar tamanho se necessário (6px a 16px)
+      initialX: Math.random() * 100,
+      initialY: Math.random() * 100,
+      delay: Math.random() * 4,
+      size: Math.random() * 10 + 6,
     }));
   }, [numSparkles]);
 
@@ -77,14 +79,12 @@ const Hero = ({ scrollToProducts }) => {
     <section
       id="hero"
       className="relative h-[calc(100vh-80px)] min-h-[700px] md:h-[calc(100vh-96px)]
-                flex flex-col items-center justify-center text-center overflow-hidden"
-      // Aplicando gradiente dourado diretamente com estilos inline
+                 flex flex-col items-center justify-center text-center overflow-hidden"
       style={{
         background:
-          "linear-gradient(to bottom right, #F0E68C, #B8860B, #DAA520)", // KhakiClaro, DarkGoldenRod, Goldenrod
+          "linear-gradient(to bottom right, #F0E68C, #B8860B, #DAA520)",
       }}
     >
-      {/* Camada de Faíscas Douradas */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
         {sparklesData.map(({ id, initialX, initialY, delay, size }) => (
           <GoldenSparkle
@@ -105,10 +105,9 @@ const Hero = ({ scrollToProducts }) => {
       >
         <h1
           className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-serif font-extrabold mb-6 leading-tight"
-          // Cor do texto do título diretamente
           style={{
-            color: "#FFF8E7", // Off-white para contraste com fundo dourado
-            textShadow: "0px 2px 8px rgba(100, 70, 0, 0.7)", // Sombra mais escura
+            color: "#FFF8E7",
+            textShadow: "0px 2px 8px rgba(100, 70, 0, 0.7)",
           }}
         >
           {titleText.split(" ").map((word, index) => (
@@ -129,9 +128,8 @@ const Hero = ({ scrollToProducts }) => {
 
         <motion.p
           className="text-base sm:text-lg md:text-xl max-w-xl mx-auto mb-10 font-sans leading-relaxed"
-          // Cor do subtítulo diretamente
           style={{
-            color: "#FAFAD2", // LightGoldenrodYellow - um dourado bem claro
+            color: "#FAFAD2",
             textShadow: "0px 1px 5px rgba(100, 70, 0, 0.5)",
           }}
           variants={itemVariants(0.6)}
@@ -140,33 +138,32 @@ const Hero = ({ scrollToProducts }) => {
         </motion.p>
 
         <motion.button
-          onClick={scrollToProducts}
-          // Estilos do botão diretamente
+          onClick={() => navigate("/products")} // Navega para /products
           className="font-sans font-semibold py-3.5 px-10 sm:py-4 sm:px-12 rounded-lg text-lg
                     shadow-lg hover:shadow-xl
                     transition-all duration-300 ease-in-out transform hover:scale-105
                     focus:outline-none"
           style={{
-            backgroundColor: "#A07000", // Seu nude-gold-dark
-            color: "#FFF8E7", // Off-white
-            border: "2px solid #EEE8AA", // PaleGoldenrod (nude-gold-lightShine)
+            backgroundColor: "#A07000",
+            color: "#FFF8E7",
+            border: "2px solid #EEE8AA",
           }}
           variants={itemVariants(1)}
           whileHover={{
             scale: 1.08,
             boxShadow: "0px 10px 30px rgba(100, 70, 0, 0.6)",
-            backgroundColor: "#DAA520", // Goldenrod (nude-gold-medium) no hover
-            borderColor: "#FFD700", // Gold (nude-gold-baseShine) no hover
+            backgroundColor: "#DAA520",
+            borderColor: "#FFD700",
           }}
           whileTap={{ scale: 0.98 }}
         >
-          Descobrir Coleção
+          Descobrir Produtos
         </motion.button>
       </motion.div>
 
       <motion.div
         className="absolute bottom-8 sm:bottom-10 left-1/2 -translate-x-1/2 z-10"
-        onClick={scrollToProducts}
+        onClick={() => navigate("/products")} // Navega para /products
         style={{ cursor: "pointer" }}
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -180,8 +177,7 @@ const Hero = ({ scrollToProducts }) => {
       >
         <ChevronDown
           size={38}
-          // Cor da seta diretamente
-          style={{ color: "#FAFAD2" }} // LightGoldenrodYellow
+          style={{ color: "#FAFAD2" }}
           className="drop-shadow-lg transition-colors hover:opacity-80"
         />
       </motion.div>

@@ -140,12 +140,11 @@ function ProductDetails() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
           >
-            <h1 className="text-3xl lg:text-4xl font-bold text-emerald-700">
+            <h1 className="text-3xl lg:text-4xl font-bold text-nude-gold-dark">
               {produto.nome}
             </h1>
-
             <div className="flex items-baseline space-x-2">
-              <span className="text-3xl font-extrabold text-emerald-600">
+              <span className="text-3xl font-extrabold text-nude-gold-dark">
                 R$ {precoFinal.toFixed(2).replace(".", ",")}
               </span>
               {mostrarPrecoAntigo && (
