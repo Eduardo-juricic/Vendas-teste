@@ -11,7 +11,7 @@ import {
 import { db, auth } from "../FirebaseConfig";
 import { signOut } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
-import { ChevronDownIcon, ChevronUpIcon } from "@heroicons/react/24/outline"; //
+import { ChevronDownIcon, ChevronUpIcon } from "@heroicons/react/24/outline";
 
 const Admin = () => {
   const [produtos, setProdutos] = useState([]);
@@ -24,7 +24,8 @@ const Admin = () => {
     currentImageUrl: "",
     destaque_curto: "",
     preco_promocional: "",
-    categoria: "", // NOVO CAMPO: Categoria do produto
+    categoria: "",
+    showOnHomepage: true, // NOVO CAMPO: Mostrar na página principal? Default true para conveniência.
   });
   const [editandoId, setEditandoId] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -38,7 +39,6 @@ const Admin = () => {
   const produtosRef = collection(db, "produtos");
   const pedidosRef = collection(db, "pedidos");
 
-  // Definindo as categorias
   const categoriasProduto = [
     "Perfumes",
     "Maquiagens",
@@ -54,7 +54,6 @@ const Admin = () => {
   };
 
   const buscarPedidos = async () => {
-    // ... (lógica de buscarPedidos mantida igual)
     try {
       const snapshot = await getDocs(pedidosRef);
       const listaPedidos = snapshot.docs.map((doc) => ({
@@ -64,9 +63,7 @@ const Admin = () => {
       listaPedidos.sort((a, b) => {
         const dateA = a.dataCriacao?.toDate();
         const dateB = b.dataCriacao?.toDate();
-        if (dateA && dateB) {
-          return dateB - dateA;
-        }
+        if (dateA && dateB) return dateB - dateA;
         if (dateA) return -1;
         if (dateB) return 1;
         return 0;
@@ -78,10 +75,8 @@ const Admin = () => {
   };
 
   const handleLogout = async () => {
-    // ... (lógica de handleLogout mantida igual)
     try {
       await signOut(auth);
-      console.log("Usuário deslogado com sucesso!");
       navigate("/login");
     } catch (error) {
       console.error("Erro ao deslogar:", error);
@@ -89,19 +84,15 @@ const Admin = () => {
   };
 
   useEffect(() => {
-    // ... (lógica do useEffect mantida igual, incluindo busca de config do Cloudinary)
     buscarProdutos();
     buscarPedidos();
-
     const configRef = doc(db, "config", "cloudinary");
     getDoc(configRef)
       .then((docSnap) => {
         if (docSnap.exists()) {
           setCloudinaryConfig(docSnap.data());
         } else {
-          console.log(
-            "No such document! (config/cloudinary) - Por favor, crie este documento no Firestore."
-          );
+          console.log("Configuração do Cloudinary não encontrada.");
         }
       })
       .catch((error) => {
@@ -116,7 +107,6 @@ const Admin = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.categoria) {
-      // Validação simples para categoria
       alert("Por favor, selecione uma categoria para o produto.");
       return;
     }
@@ -124,9 +114,7 @@ const Admin = () => {
 
     try {
       let imageUrl = form.currentImageUrl;
-
       if (form.imagem) {
-        // ... (lógica de upload da imagem para Cloudinary mantida igual)
         const formData = new FormData();
         formData.append("file", form.imagem);
         formData.append(
@@ -134,22 +122,16 @@ const Admin = () => {
           cloudinaryConfig.upload_preset || "produtos_upload"
         );
         formData.append("folder", "produtos");
-
         const response = await fetch(
           `https://api.cloudinary.com/v1_1/${
             cloudinaryConfig.cloud_name || "dtbvkmxy9"
           }/image/upload`,
-          {
-            method: "POST",
-            body: formData,
-          }
+          { method: "POST", body: formData }
         );
-
         if (!response.ok) {
           const errorData = await response.json();
-          console.error("Erro do Cloudinary:", errorData);
           throw new Error(
-            `Erro ao enviar imagem para o Cloudinary: ${
+            `Erro Cloudinary: ${
               errorData.error?.message || response.statusText
             }`
           );
@@ -167,7 +149,8 @@ const Admin = () => {
         preco_promocional: form.preco_promocional
           ? Number(form.preco_promocional)
           : 0,
-        categoria: form.categoria, // ADICIONADO: Salvar categoria
+        categoria: form.categoria,
+        showOnHomepage: form.showOnHomepage, // NOVO: Salvar o estado de visibilidade na homepage
       };
 
       if (editandoId) {
@@ -179,7 +162,6 @@ const Admin = () => {
       }
 
       setForm({
-        // Reset do formulário, incluindo categoria
         nome: "",
         descricao: "",
         preco: "",
@@ -187,7 +169,8 @@ const Admin = () => {
         currentImageUrl: "",
         destaque_curto: "",
         preco_promocional: "",
-        categoria: "", // ADICIONADO: Resetar categoria
+        categoria: "",
+        showOnHomepage: true, // NOVO: Resetar para o default
       });
       if (document.querySelector('input[type="file"]')) {
         document.querySelector('input[type="file"]').value = "";
@@ -202,7 +185,6 @@ const Admin = () => {
   };
 
   const deletar = async (id) => {
-    // ... (lógica de deletar mantida igual)
     if (window.confirm("Tem certeza que deseja excluir este produto?")) {
       const ref = doc(db, "produtos", id);
       await deleteDoc(ref);
@@ -211,7 +193,6 @@ const Admin = () => {
   };
 
   const deletarPedido = async (id) => {
-    // ... (lógica de deletarPedido mantida igual)
     if (
       window.confirm(
         `Tem certeza que deseja excluir o pedido ID: ${id}? Esta ação não pode ser desfeita.`
@@ -220,10 +201,8 @@ const Admin = () => {
       try {
         const pedidoDocRef = doc(db, "pedidos", id);
         await deleteDoc(pedidoDocRef);
-        console.log(`Pedido ${id} excluído com sucesso do Firestore.`);
         buscarPedidos();
       } catch (error) {
-        console.error(`Erro ao excluir pedido ${id}:`, error);
         alert(`Erro ao excluir pedido: ${error.message}`);
       }
     }
@@ -238,31 +217,28 @@ const Admin = () => {
       currentImageUrl: produto.imagem || "",
       destaque_curto: produto.destaque_curto || "",
       preco_promocional: produto.preco_promocional || "",
-      categoria: produto.categoria || "", // ADICIONADO: Carregar categoria para edição
-      // id: produto.id, // Não é estritamente necessário no form state se editandoId já existe
+      categoria: produto.categoria || "",
+      showOnHomepage:
+        produto.showOnHomepage === undefined ? true : produto.showOnHomepage, // NOVO: Carregar para edição (default true se não definido)
     });
     setEditandoId(produto.id);
     window.scrollTo(0, 0);
   };
 
   const definirDestaque = async (id) => {
-    // ... (lógica de definirDestaque mantida igual)
     const produtoParaAtualizar = produtos.find((p) => p.id === id);
     const novoEstadoDestaque = !produtoParaAtualizar?.destaque;
     const updatesBatch = [];
-
     produtos.forEach((p) => {
       if (p.destaque && p.id !== id) {
-        const ref = doc(db, "produtos", p.id);
-        updatesBatch.push(updateDoc(ref, { destaque: false }));
+        updatesBatch.push(
+          updateDoc(doc(db, "produtos", p.id), { destaque: false })
+        );
       }
     });
-
-    const refProdutoClicado = doc(db, "produtos", id);
     updatesBatch.push(
-      updateDoc(refProdutoClicado, { destaque: novoEstadoDestaque })
+      updateDoc(doc(db, "produtos", id), { destaque: novoEstadoDestaque })
     );
-
     await Promise.all(updatesBatch);
     buscarProdutos();
   };
@@ -279,7 +255,7 @@ const Admin = () => {
         </button>
       </div>
 
-      {/* Seção de Pedidos Recebidos ... (mantida igual) ... */}
+      {/* Seção de Pedidos ... (sem alterações) ... */}
       <div className="mt-10">
         <div
           className="flex justify-between items-center mb-6 cursor-pointer"
@@ -294,7 +270,6 @@ const Admin = () => {
             <ChevronDownIcon className="h-6 w-6 text-gray-700" />
           )}
         </div>
-
         {showOrders && (
           <>
             {pedidos.length === 0 && (
@@ -306,7 +281,6 @@ const Admin = () => {
                   key={pedido.id}
                   className="border p-6 rounded-lg shadow-lg bg-white"
                 >
-                  {/* ... (Estrutura interna do card de pedido mantida igual) ... */}
                   <div className="flex flex-col sm:flex-row justify-between items-start mb-3">
                     <h3 className="font-bold text-xl text-blue-700 mb-2 sm:mb-0">
                       Pedido ID: {pedido.id}
@@ -314,14 +288,15 @@ const Admin = () => {
                     <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded">
                       Data:{" "}
                       {pedido.dataCriacao?.toDate
-                        ? pedido.dataCriacao.toDate().toLocaleString("pt-BR", {
-                            dateStyle: "short",
-                            timeStyle: "short",
-                          })
+                        ? pedido.dataCriacao
+                            .toDate()
+                            .toLocaleString("pt-BR", {
+                              dateStyle: "short",
+                              timeStyle: "short",
+                            })
                         : "Data não disponível"}
                     </span>
                   </div>
-
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3 mb-4 text-sm">
                     <div>
                       <p>
@@ -447,7 +422,7 @@ const Admin = () => {
         <h2 className="text-2xl font-semibold mb-4 text-gray-700">
           {editandoId ? "Editar Produto" : "Adicionar Novo Produto"}
         </h2>
-        <input // Alterado para input para nomes mais curtos
+        <input
           type="text"
           placeholder="Nome do Produto"
           value={form.nome}
@@ -462,7 +437,6 @@ const Admin = () => {
           className="border p-2 w-full rounded h-24 resize-y"
           required
         />
-        {/* CAMPO DE CATEGORIA ADICIONADO ABAIXO */}
         <div>
           <label
             htmlFor="categoria"
@@ -475,7 +449,7 @@ const Admin = () => {
             name="categoria"
             value={form.categoria}
             onChange={(e) => setForm({ ...form, categoria: e.target.value })}
-            className="border p-2 w-full rounded bg-white" // Adicionado bg-white para consistência
+            className="border p-2 w-full rounded bg-white"
             required
           >
             <option value="" disabled>
@@ -488,7 +462,6 @@ const Admin = () => {
             ))}
           </select>
         </div>
-        {/* FIM DO CAMPO DE CATEGORIA */}
         <input
           type="number"
           placeholder="Preço (ex: 99.99)"
@@ -515,6 +488,28 @@ const Admin = () => {
           onChange={(e) => setForm({ ...form, destaque_curto: e.target.value })}
           className="border p-2 w-full rounded h-20 resize-y"
         />
+
+        {/* NOVO: Checkbox para mostrar na página principal */}
+        <div className="flex items-center pt-2">
+          <input
+            id="showOnHomepage"
+            name="showOnHomepage"
+            type="checkbox"
+            checked={form.showOnHomepage}
+            onChange={(e) =>
+              setForm({ ...form, showOnHomepage: e.target.checked })
+            }
+            className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+          />
+          <label
+            htmlFor="showOnHomepage"
+            className="ml-2 block text-sm text-gray-900"
+          >
+            Mostrar na Página Principal (em "Nossas Coleções")?
+          </label>
+        </div>
+        {/* FIM DO NOVO CHECKBOX */}
+
         <label className="block text-sm font-medium text-gray-700 mt-2">
           Imagem do Produto:
         </label>
@@ -558,7 +553,8 @@ const Admin = () => {
                 currentImageUrl: "",
                 destaque_curto: "",
                 preco_promocional: "",
-                categoria: "", // ADICIONADO: Resetar categoria ao cancelar edição
+                categoria: "",
+                showOnHomepage: true, // NOVO: Resetar ao cancelar edição
               });
               if (document.querySelector('input[type="file"]')) {
                 document.querySelector('input[type="file"]').value = "";
@@ -597,12 +593,21 @@ const Admin = () => {
                   <h3 className="font-bold text-xl text-gray-800">
                     {produto.nome}
                   </h3>
-                  {/* ADICIONADO: Exibição da Categoria */}
                   {produto.categoria && (
                     <span className="text-xs font-medium text-white bg-teal-500 px-2 py-0.5 rounded-full inline-block mb-1 mr-2">
                       {produto.categoria}
                     </span>
                   )}
+                  {/* NOVO: Exibir status de 'Mostrar na Página Principal' */}
+                  <span
+                    className={`text-xs font-medium px-2 py-0.5 rounded-full inline-block mb-1 ${
+                      produto.showOnHomepage
+                        ? "bg-green-100 text-green-700"
+                        : "bg-red-100 text-red-700"
+                    }`}
+                  >
+                    Home: {produto.showOnHomepage ? "Sim" : "Não"}
+                  </span>
                   {produto.destaque_curto && (
                     <p className="text-sm text-gray-500 italic mb-1">
                       {produto.destaque_curto}
@@ -611,7 +616,6 @@ const Admin = () => {
                   <p className="text-gray-700 text-sm mb-1 line-clamp-2">
                     {produto.descricao}
                   </p>
-                  {/* ... (Lógica de preço mantida igual) ... */}
                   {produto.preco_promocional > 0 &&
                   parseFloat(produto.preco_promocional) <
                     parseFloat(produto.preco) ? (
@@ -634,7 +638,6 @@ const Admin = () => {
                 </div>
               </div>
               <div className="flex flex-wrap gap-2 justify-end w-full md:w-auto md:ml-4 flex-shrink-0">
-                {/* ... (Botões de ação mantidos iguais) ... */}
                 <button
                   onClick={() => editar(produto)}
                   className="bg-yellow-500 text-white px-4 py-2 rounded-md hover:bg-yellow-600 transition-colors duration-200 text-sm"
