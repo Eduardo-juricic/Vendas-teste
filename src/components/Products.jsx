@@ -5,7 +5,8 @@ import { useCart } from "../context/CartContext";
 import Notification from "./Notification";
 import { motion } from "framer-motion";
 import { Element } from "react-scroll";
-import { ShoppingCart } from "lucide-react"; // Ícone para o botão
+import { ShoppingCart } from "lucide-react";
+import { Link } from "react-router-dom"; // Importar Link para o nome do produto
 
 function Products() {
   const [products, setProducts] = useState([]);
@@ -27,6 +28,7 @@ function Products() {
   useEffect(() => {
     const fetchProducts = async () => {
       setLoading(true);
+      setError(null); // Limpa erros anteriores
       try {
         const productsRef = collection(db, "produtos");
         const snapshot = await getDocs(productsRef);
@@ -34,12 +36,15 @@ function Products() {
           id: doc.id,
           ...doc.data(),
         }));
-        const produtosNormais = productsList.filter(
-          (product) => !product.destaque // Filtra produtos que não são destaque
+
+        // ALTERADO: Filtrar produtos que devem aparecer na homepage
+        // E que não são produtos em destaque (destaque é tratado pelo FeaturedProduct.jsx)
+        const produtosParaHomepage = productsList.filter(
+          (product) => product.showOnHomepage === true && !product.destaque
         );
-        setProducts(produtosNormais);
+        setProducts(produtosParaHomepage);
       } catch (err) {
-        console.error("Erro ao buscar produtos:", err);
+        console.error("Erro ao buscar produtos para homepage:", err);
         setError(err);
       } finally {
         setLoading(false);
@@ -49,22 +54,15 @@ function Products() {
     fetchProducts();
   }, []);
 
-  // Card Placeholder para o estado de Loading
   const ProductCardPlaceholder = () => (
     <div className="group bg-nude-white rounded-xl shadow-lg overflow-hidden flex flex-col animate-pulse">
-      <div className="aspect-[4/5] w-full bg-nude-beige rounded-t-xl"></div>{" "}
-      {/* Ajustado aspect-ratio e borda */}
+      <div className="aspect-[4/5] w-full bg-nude-beige rounded-t-xl"></div>
       <div className="p-5 flex flex-col flex-grow items-center text-center">
-        <div className="h-6 bg-nude-beige rounded w-3/4 mb-3"></div>{" "}
-        {/* Nome do produto */}
-        <div className="h-4 bg-nude-beige rounded w-full mb-2"></div>{" "}
-        {/* Descrição linha 1 */}
-        <div className="h-4 bg-nude-beige rounded w-5/6 mb-4"></div>{" "}
-        {/* Descrição linha 2 */}
-        <div className="h-8 bg-nude-beige-dark rounded w-1/3 mb-6"></div>{" "}
-        {/* Preço */}
-        <div className="h-12 bg-nude-gold/50 rounded-lg w-full"></div>{" "}
-        {/* Botão */}
+        <div className="h-6 bg-nude-beige rounded w-3/4 mb-3"></div>
+        <div className="h-4 bg-nude-beige rounded w-full mb-2"></div>
+        <div className="h-4 bg-nude-beige rounded w-5/6 mb-4"></div>
+        <div className="h-8 bg-nude-beige-dark rounded w-1/3 mb-6"></div>
+        <div className="h-12 bg-nude-gold/50 rounded-lg w-full"></div>
       </div>
     </div>
   );
@@ -79,8 +77,7 @@ function Products() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-6 gap-y-10">
             {[...Array(4)].map((_, i) => (
               <ProductCardPlaceholder key={i} />
-            ))}{" "}
-            {/* Exibe 4 placeholders */}
+            ))}
           </div>
         </div>
       </section>
@@ -110,17 +107,31 @@ function Products() {
 
   if (products.length === 0) {
     return (
-      <section className="bg-nude-off-white py-20 text-center">
-        <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-serif font-semibold text-nude-gold-dark mb-4">
-            Em Breve Novidades
-          </h2>
-          <p className="text-nude-text font-sans">
-            Nenhuma fragrância ou maquiagem encontrada no momento. Estamos
-            preparando coleções incríveis para você!
-          </p>
-        </div>
-      </section>
+      <Element name="produtos-section">
+        {" "}
+        {/* Manter o Element para rolagem se necessário */}
+        <section className="bg-nude-beige-light py-20 text-center">
+          {" "}
+          {/* Fundo ajustado */}
+          <div className="container mx-auto px-4">
+            <h2 className="text-3xl font-serif font-semibold text-nude-gold-dark mb-4">
+              Explorando Novas Essências
+            </h2>
+            <p className="text-nude-text font-sans max-w-xl mx-auto">
+              Nossas coleções para a página principal estão sendo cuidadosamente
+              selecionadas. <br />
+              Enquanto isso, que tal conferir todos os nossos{" "}
+              <Link
+                to="/products"
+                className="text-nude-gold hover:underline font-semibold"
+              >
+                produtos
+              </Link>
+              ?
+            </p>
+          </div>
+        </section>
+      </Element>
     );
   }
 
@@ -129,15 +140,13 @@ function Products() {
     visible: (i) => ({
       opacity: 1,
       y: 0,
-      transition: { duration: 0.5, delay: i * 0.07, ease: "easeOut" }, // Delay sutil para cada card
+      transition: { duration: 0.5, delay: i * 0.07, ease: "easeOut" },
     }),
   };
 
   return (
     <Element name="produtos-section">
       <section className="bg-nude-beige-light py-16 md:py-24">
-        {" "}
-        {/* Fundo bege claro para a seção */}
         <div className="container mx-auto px-4">
           <motion.h2
             className="text-4xl md:text-5xl font-serif font-bold mb-12 md:mb-16 text-nude-gold-dark text-center"
@@ -146,7 +155,7 @@ function Products() {
             viewport={{ once: true, amount: 0.3 }}
             transition={{ duration: 0.6 }}
           >
-            Nossas Coleções {/* Título alterado para maior sofisticação */}
+            Nossas Coleções
           </motion.h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-6 gap-y-10">
             {products.map((product, index) => (
@@ -162,30 +171,28 @@ function Products() {
                 whileInView="visible"
                 viewport={{ once: true, amount: 0.2 }}
               >
-                <div className="relative aspect-[4/5] w-full overflow-hidden">
-                  {" "}
-                  {/* Ratio para perfumes/maquiagens */}
-                  <img
-                    src={
-                      product.imagem ||
-                      `https://via.placeholder.com/400x500/${"FFF8E7".substring(
-                        1
-                      )}/${"A07000".substring(1)}?text=${encodeURIComponent(
-                        product.nome || "Nude"
-                      )}`
-                    } // Placeholder com cores Nude
-                    alt={product.nome || "Perfume ou Maquiagem Nude"}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-400 ease-in-out"
-                  />
-                  {product.tag && ( // Se houver uma tag para o produto
-                    <span className="absolute top-3 right-3 bg-nude-gold text-nude-white text-xs font-semibold px-3 py-1 rounded-full shadow-md">
-                      {product.tag}
-                    </span>
-                  )}
-                </div>
+                <Link to={`/produto/${product.id}`} className="block">
+                  <div className="relative aspect-[4/5] w-full overflow-hidden">
+                    <img
+                      src={
+                        product.imagem ||
+                        `https://via.placeholder.com/400x500/${"FFF8E7".substring(
+                          1
+                        )}/${"A07000".substring(1)}?text=${encodeURIComponent(
+                          product.nome || "Nude"
+                        )}`
+                      }
+                      alt={product.nome || "Perfume ou Maquiagem Nude"}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-400 ease-in-out"
+                    />
+                    {/* Removida a product.tag aqui, pode ser específica do AllProductsPage ou adicionada se necessário */}
+                  </div>
+                </Link>
                 <div className="p-5 flex flex-col flex-grow items-center text-center">
                   <h3 className="text-xl font-serif font-semibold text-nude-gold-dark mb-2 group-hover:text-nude-gold transition-colors">
-                    {product.nome || "Produto Nude"}
+                    <Link to={`/produto/${product.id}`}>
+                      {product.nome || "Produto Nude"}
+                    </Link>
                   </h3>
                   <p className="text-sm text-nude-text-light mb-3 flex-grow min-h-[40px] line-clamp-2 font-sans">
                     {product.descricaoCurta ||
@@ -203,9 +210,9 @@ function Products() {
                   <button
                     onClick={() => handleAddToCart(product)}
                     className="mt-auto bg-nude-gold text-nude-white hover:bg-nude-gold-dark
-                               font-sans font-semibold py-3 px-6 rounded-lg transition-colors duration-300
-                               focus:outline-none focus:ring-2 focus:ring-nude-gold-light focus:ring-opacity-70
-                               w-full flex items-center justify-center gap-2 group-hover:scale-105 transform"
+                              font-sans font-semibold py-3 px-6 rounded-lg transition-colors duration-300
+                              focus:outline-none focus:ring-2 focus:ring-nude-gold-light focus:ring-opacity-70
+                              w-full flex items-center justify-center gap-2 group-hover:scale-105 transform"
                   >
                     <ShoppingCart size={18} />
                     Comprar
@@ -219,7 +226,6 @@ function Products() {
           <Notification
             message={notificationMessage}
             onClose={() => setNotificationMessage(null)}
-            // Considere estilizar o Notification com a paleta Nude também
           />
         )}
       </section>
