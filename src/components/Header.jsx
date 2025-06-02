@@ -1,214 +1,248 @@
 import React, { useState, useEffect } from "react";
-import {
-  NavLink,
-  Link as RouterLink,
-  useLocation,
-  useNavigate,
-} from "react-router-dom"; // Adicionado useNavigate
-import { Link as ScrollLink, scroller } from "react-scroll"; // Adicionado scroller
-import { motion } from "framer-motion";
+import { Link as RouterLink, useNavigate, useLocation } from "react-router-dom";
+import { Link as ScrollLink, scroller } from "react-scroll";
+import { ShoppingCart, Menu, X } from "lucide-react"; // Removido User de lucide-react
+import { motion, AnimatePresence } from "framer-motion";
+import { useCart } from "../context/CartContext";
 
-// Ícones (CartIcon, MenuIcon, CloseIcon) permanecem os mesmos...
-// Ícone de Carrinho SVG (Existente)
-const CartIcon = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    fill="none"
-    viewBox="0 0 24 24"
-    strokeWidth={1.5}
-    stroke="currentColor"
-    className="h-6 w-6"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z"
-    />
-  </svg>
-);
-
-// Ícone de Menu Hambúrguer (Heroicons outline menu)
-const MenuIcon = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    fill="none"
-    viewBox="0 0 24 24"
-    strokeWidth={1.5}
-    stroke="currentColor"
-    className="w-6 h-6"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"
-    />
-  </svg>
-);
-
-// Ícone de Fechar (X) (Heroicons outline x-mark)
-const CloseIcon = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    fill="none"
-    viewBox="0 0 24 24"
-    strokeWidth={1.5}
-    stroke="currentColor"
-    className="w-6 h-6"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      d="M6 18L18 6M6 6l12 12"
-    />
-  </svg>
-);
-
-function Header() {
+const Header = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const { cartItems } = useCart();
+  const navigate = useNavigate();
   const location = useLocation();
-  const navigate = useNavigate(); // Hook para navegação
+
+  const itemCount = cartItems
+    ? cartItems.reduce((total, item) => total + item.quantity, 0)
+    : 0;
+
+  const toggleMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
 
   useEffect(() => {
-    setIsMobileMenuOpen(false);
+    const handleScrollEvent = () => {
+      setIsScrolled(window.scrollY > 20);
+    };
+    window.addEventListener("scroll", handleScrollEvent);
+    return () => window.removeEventListener("scroll", handleScrollEvent);
+  }, []);
+
+  useEffect(() => {
+    if (location.hash) {
+      const section = location.hash.substring(1);
+      setTimeout(() => {
+        scroller.scrollTo(section, {
+          duration: 800,
+          delay: 0,
+          smooth: "easeInOutQuart",
+          offset: -90,
+        });
+      }, 100);
+    } else if (location.pathname === "/" && !location.hash) {
+      // window.scrollTo(0, 0);
+    }
   }, [location]);
 
-  const baseLinkClasses =
-    "font-medium text-stone-600 hover:text-amber-600 transition-colors duration-200";
-  const mobileLinkClasses =
-    "block py-3 px-4 text-base font-medium text-stone-700 hover:bg-amber-50 hover:text-amber-600 rounded-md";
+  const navLinkClasses = (path) =>
+    `font-sans text-nude-text hover:text-nude-gold transition-colors duration-300 py-2 ${
+      location.pathname === path && !location.hash
+        ? "text-nude-gold font-semibold border-b-2 border-nude-gold"
+        : ""
+    }`;
 
-  const navLinkActiveClasses = ({ isActive }) =>
-    isActive
-      ? "font-medium text-amber-500 transition-colors duration-200"
-      : baseLinkClasses;
+  const baseScrollAndRouterLinkClasses = `font-sans text-nude-text hover:text-nude-gold transition-colors duration-300 py-2 cursor-pointer`;
 
-  const mobileNavLinkActiveClasses = ({ isActive }) =>
-    isActive
-      ? "block py-3 px-4 text-base font-medium text-amber-600 bg-amber-100 rounded-md"
-      : mobileLinkClasses;
+  const scrollLinkActiveClasses =
+    "text-nude-gold font-semibold border-b-2 border-nude-gold";
 
-  const toggleMobileMenu = () => {
-    setIsMobileMenuOpen(!isMobileMenuOpen);
-  };
+  const iconButtonClasses =
+    "text-nude-text hover:text-nude-gold transition-colors duration-300";
 
-  const closeMobileMenu = () => {
+  const handleScrollToSectionMobile = (sectionId) => {
     setIsMobileMenuOpen(false);
-  };
-
-  const handleProdutosMobileClick = () => {
-    closeMobileMenu();
-    if (location.pathname === "/") {
-      // Já está na home, apenas rola
-      scroller.scrollTo("produtos-section", {
+    if (location.pathname === "/" && !location.hash) {
+      scroller.scrollTo(sectionId, {
         duration: 800,
         delay: 0,
         smooth: "easeInOutQuart",
-        offset: -70, // Ajuste conforme a altura do seu header fixo
+        offset: -90,
+      });
+    } else if (
+      location.pathname === "/" &&
+      location.hash &&
+      sectionId === location.hash.substring(1)
+    ) {
+      scroller.scrollTo(sectionId, {
+        duration: 800,
+        delay: 0,
+        smooth: "easeInOutQuart",
+        offset: -90,
       });
     } else {
-      // Navega para a home com o hash para indicar a rolagem
-      navigate("/#produtos-section");
+      navigate(`/#${sectionId}`);
     }
   };
 
-  return (
-    <motion.header
-      className="bg-white shadow-sm sticky top-0 z-50"
-      initial={{ y: -100, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.5, ease: "easeOut" }}
-    >
-      <nav className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          {/* Logo */}
-          <div className="flex-shrink-0">
-            <RouterLink
-              to="/"
-              className="text-2xl font-serif font-bold text-emerald-700"
-              onClick={closeMobileMenu}
-            >
-              Ateliê Criativo
-            </RouterLink>
-          </div>
+  const headerStyle = {
+    backgroundColor:
+      isScrolled || isMobileMenuOpen
+        ? "rgba(245, 245, 220, 0.95)"
+        : "transparent",
+    transition: "background-color 0.3s ease-in-out",
+  };
 
-          {/* Navegação Desktop */}
-          <div className="hidden md:flex md:items-center md:space-x-6">
-            <NavLink to="/" className={navLinkActiveClasses} end>
-              Início
-            </NavLink>
+  const mobileMenuStyle = {
+    backgroundColor: "rgba(245, 245, 220, 0.95)",
+  };
+
+  return (
+    <header
+      className={`sticky top-0 z-50 ${
+        isScrolled || isMobileMenuOpen ? "shadow-md backdrop-blur-sm" : ""
+      } border-b border-nude-gold/10`}
+      style={headerStyle}
+    >
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-20 md:h-24">
+          <RouterLink
+            to="/"
+            onClick={() => {
+              if (
+                location.pathname === "/" &&
+                location.hash !== "#hero" &&
+                location.hash !== ""
+              ) {
+                navigate("/");
+              } else if (location.pathname === "/") {
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }
+            }}
+            className="text-3xl md:text-4xl font-serif font-bold hover:opacity-80 transition-opacity"
+            style={{ color: "#C6A98E" }}
+          >
+            Nude
+          </RouterLink>
+
+          <nav className="hidden md:flex space-x-8 items-center">
             <ScrollLink
-              to="produtos-section"
+              to="hero"
               spy={true}
               smooth={true}
-              offset={-70}
+              offset={-90}
               duration={500}
-              className={baseLinkClasses + " cursor-pointer"}
+              className={baseScrollAndRouterLinkClasses}
+              activeClass={scrollLinkActiveClasses}
             >
-              Produtos
+              Início
             </ScrollLink>
-            <RouterLink
-              to="/carrinho"
-              className={`${baseLinkClasses} flex items-center space-x-1`}
-            >
-              <CartIcon />
-              <span>Carrinho</span>
+            {/* TEXTO DO LINK ALTERADO DE "Perfumes" PARA "Produtos" */}
+            <RouterLink to="/products" className={navLinkClasses("/products")}>
+              Produtos
             </RouterLink>
-          </div>
-
-          {/* Botão do Menu Mobile */}
-          <div className="md:hidden flex items-center">
-            <button
-              onClick={toggleMobileMenu}
-              type="button"
-              className="inline-flex items-center justify-center p-2 rounded-md text-stone-500 hover:text-amber-600 hover:bg-stone-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-amber-500"
-              aria-expanded="false"
+            <ScrollLink
+              to="nossa-essencia"
+              spy={true}
+              smooth={true}
+              offset={-90}
+              duration={500}
+              className={baseScrollAndRouterLinkClasses}
+              activeClass={scrollLinkActiveClasses}
             >
-              <span className="sr-only">Abrir menu principal</span>
-              {isMobileMenuOpen ? <CloseIcon /> : <MenuIcon />}
+              Sobre Nós
+            </ScrollLink>
+            <ScrollLink
+              to="contato-section"
+              spy={true}
+              smooth={true}
+              offset={-90}
+              duration={500}
+              className={baseScrollAndRouterLinkClasses}
+              activeClass={scrollLinkActiveClasses}
+            >
+              Contato
+            </ScrollLink>
+          </nav>
+
+          {/* Ícones */}
+          <div className="flex items-center space-x-4 md:space-x-5">
+            <button
+              onClick={() => navigate("/carrinho")}
+              className={`${iconButtonClasses} relative p-2`}
+            >
+              <ShoppingCart size={22} />
+              {itemCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-nude-gold text-nude-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center animate-pulse">
+                  {itemCount}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={toggleMenu}
+              className="md:hidden text-nude-text hover:text-nude-gold p-2"
+            >
+              {isMobileMenuOpen ? <X size={26} /> : <Menu size={26} />}
             </button>
           </div>
         </div>
-      </nav>
+      </div>
 
-      {/* Menu Mobile Dropdown */}
-      {isMobileMenuOpen && (
-        <motion.div
-          className="md:hidden bg-white shadow-lg absolute top-16 inset-x-0 z-40 pb-3"
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -20 }}
-          transition={{ duration: 0.2, ease: "easeOut" }}
-        >
-          <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
-            <NavLink
-              to="/"
-              className={mobileNavLinkActiveClasses}
-              end
-              onClick={closeMobileMenu}
-            >
-              Início
-            </NavLink>
-            <button
-              onClick={handleProdutosMobileClick}
-              className={`${mobileLinkClasses} w-full text-left`} // Faz o botão parecer um link
-            >
-              Produtos
-            </button>
-            <RouterLink
-              to="/carrinho"
-              className={`${mobileNavLinkActiveClasses({
-                isActive: location.pathname === "/carrinho",
-              })} flex items-center space-x-1.5`}
-              onClick={closeMobileMenu}
-            >
-              <CartIcon />
-              <span>Carrinho</span>
-            </RouterLink>
-          </div>
-        </motion.div>
-      )}
-    </motion.header>
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            className="md:hidden absolute top-full left-0 right-0 shadow-xl overflow-hidden"
+            style={mobileMenuStyle}
+          >
+            <nav className="flex flex-col items-center space-y-5 px-4 py-8">
+              <button
+                onClick={() => handleScrollToSectionMobile("hero")}
+                className={`font-sans text-nude-text hover:text-nude-gold transition-colors duration-300 py-2 text-lg`}
+              >
+                Início
+              </button>
+              {/* TEXTO DO LINK ALTERADO DE "Perfumes" PARA "Produtos" */}
+              <RouterLink
+                to="/products"
+                className={`${navLinkClasses("/products")} text-lg`}
+                onClick={toggleMenu}
+              >
+                Produtos
+              </RouterLink>
+              <button
+                onClick={() => handleScrollToSectionMobile("nossa-essencia")}
+                className={`font-sans text-nude-text hover:text-nude-gold transition-colors duration-300 py-2 text-lg`}
+              >
+                Sobre Nós
+              </button>
+              <button
+                onClick={() => handleScrollToSectionMobile("contato-section")}
+                className={`font-sans text-nude-text hover:text-nude-gold transition-colors duration-300 py-2 text-lg`}
+              >
+                Contato
+              </button>
+              <RouterLink
+                to="/carrinho"
+                className={`${navLinkClasses(
+                  "/carrinho"
+                )} text-lg flex items-center`}
+                onClick={toggleMenu}
+              >
+                <ShoppingCart size={20} className="mr-2" />
+                Carrinho
+                {itemCount > 0 && (
+                  <span className="ml-2 bg-nude-gold text-nude-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                    {itemCount}
+                  </span>
+                )}
+              </RouterLink>
+            </nav>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </header>
   );
-}
+};
 
 export default Header;

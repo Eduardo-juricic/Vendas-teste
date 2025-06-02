@@ -1,29 +1,29 @@
-// main.jsx
+// src/main.jsx
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import {
   BrowserRouter,
   Routes,
   Route,
-  Link as RouterLink, // Renomeado Link para RouterLink para evitar conflitos
+  Link as RouterLink,
 } from "react-router-dom";
-import { initMercadoPago } from "@mercadopago/sdk-react"; // IMPORTADO
+import { initMercadoPago } from "@mercadopago/sdk-react";
 
-import "./index.css"; //
-import App from "./App.jsx"; //
-import Login from "./pages/Login.jsx"; //
-import Admin from "./pages/Admin.jsx"; //
-import ProductDetails from "./components/ProductDetails"; //
-import { CartProvider } from "./context/CartContext"; //
-import CartPage from "./pages/CartPage"; //
-import PrivateRoute from "./components/PrivateRoute"; //
-import ServicesPage from "./pages/ServicesPage.jsx"; // Importe a nova página de serviços
+import "./index.css";
+import App from "./App.jsx";
+import Login from "./pages/Login.jsx";
+import Admin from "./pages/Admin.jsx";
+import ProductDetails from "./components/ProductDetails";
+import { CartProvider } from "./context/CartContext";
+import CartPage from "./pages/CartPage";
+import PrivateRoute from "./components/PrivateRoute";
+import ServicesPage from "./pages/ServicesPage.jsx";
+import AllProductsPage from "./pages/AllProductsPage.jsx"; // 1. IMPORTE A NOVA PÁGINA
 
 // ---- INICIALIZAÇÃO DO MERCADO PAGO ----
 const publicKey = import.meta.env.VITE_MERCADO_PAGO_PUBLIC_KEY;
 if (publicKey) {
-  initMercadoPago(publicKey, { locale: "pt-BR" }); // locale: 'pt-BR' para português
-  // console.log("SDK Mercado Pago inicializada com Public Key:", publicKey); // Pode remover ou comentar esta linha
+  initMercadoPago(publicKey, { locale: "pt-BR" });
 } else {
   console.error(
     "ERRO: Chave pública do Mercado Pago (VITE_MERCADO_PAGO_PUBLIC_KEY) não está configurada."
@@ -83,18 +83,18 @@ createRoot(document.getElementById("root")).render(
       <CartProvider>
         <Routes>
           <Route path="/" element={<App />} />
+          <Route path="/products" element={<AllProductsPage />} />{" "}
+          {/* 2. ADICIONE A NOVA ROTA AQUI */}
           <Route path="/login" element={<Login />} />
           <Route element={<PrivateRoute />}>
             <Route path="/admin" element={<Admin />} />
           </Route>
           <Route path="/produto/:id" element={<ProductDetails />} />
           <Route path="/carrinho" element={<CartPage />} />
-          {/* Rotas de Status de Pagamento ADICIONADAS */}
           <Route path="/pagamento/sucesso" element={<PagamentoSucesso />} />
           <Route path="/pagamento/falha" element={<PagamentoFalha />} />
           <Route path="/pagamento/pendente" element={<PagamentoPendente />} />
-          <Route path="/servicos" element={<ServicesPage />} />{" "}
-          {/* Adicione a nova rota para a página de serviços */}
+          <Route path="/servicos" element={<ServicesPage />} />
         </Routes>
       </CartProvider>
     </BrowserRouter>

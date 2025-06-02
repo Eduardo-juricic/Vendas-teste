@@ -5,7 +5,7 @@ function Footer() {
     <footer className="bg-gray-100 py-6 text-center text-gray-600 text-sm">
       <div className="container mx-auto flex flex-col items-center">
         {/* Copyright */}
-        <p className="mb-3">© {new Date().getFullYear()} artesanal</p>
+        <p className="mb-3">© {new Date().getFullYear()} Nude</p>
 
         {/* Redes Sociais */}
         <div className="flex space-x-4">
