@@ -21,7 +21,7 @@ const ContatoPage = () => {
     error: null,
   });
 
-  // CORREÇÃO APLICADA AQUI
+  // CORREÇÃO FINAL APLICADA AQUI
   const { isLoaded, loadError } = useJsApiLoader({
     id: "google-map-script",
     googleMapsApiKey: import.meta.env.VITE_Maps_API_KEY,
@@ -54,7 +54,6 @@ const ContatoPage = () => {
 
   const containerStyle = { width: "100%", height: "400px" };
 
-  // NOVO ENDEREÇO APLICADO AQUI
   const center = { lat: -22.875136, lng: -42.340123 };
 
   const mapOptions = {
