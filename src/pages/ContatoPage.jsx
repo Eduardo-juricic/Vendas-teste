@@ -21,7 +21,7 @@ const ContatoPage = () => {
     error: null,
   });
 
-  // CORREÇÃO FINAL E DEFINITIVA APLICADA AQUI
+  // GARANTINDO O NOME CORRETO E CONSISTENTE
   const { isLoaded, loadError } = useJsApiLoader({
     id: "google-map-script",
     googleMapsApiKey: import.meta.env.VITE_Maps_API_KEY,
