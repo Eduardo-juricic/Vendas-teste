@@ -18,7 +18,8 @@ import { CartProvider } from "./context/CartContext";
 import CartPage from "./pages/CartPage";
 import PrivateRoute from "./components/PrivateRoute";
 import ServicesPage from "./pages/ServicesPage.jsx";
-import AllProductsPage from "./pages/AllProductsPage.jsx"; // 1. IMPORTE A NOVA PÁGINA
+import AllProductsPage from "./pages/AllProductsPage.jsx";
+import ContatoPage from "./pages/ContatoPage.jsx"; // ADICIONADO: Importação da nova página
 
 // ---- INICIALIZAÇÃO DO MERCADO PAGO ----
 const publicKey = import.meta.env.VITE_MERCADO_PAGO_PUBLIC_KEY;
@@ -83,8 +84,9 @@ createRoot(document.getElementById("root")).render(
       <CartProvider>
         <Routes>
           <Route path="/" element={<App />} />
-          <Route path="/products" element={<AllProductsPage />} />{" "}
-          {/* 2. ADICIONE A NOVA ROTA AQUI */}
+          <Route path="/products" element={<AllProductsPage />} />
+          <Route path="/contato" element={<ContatoPage />} />{" "}
+          {/* ADICIONADO: Nova rota para a página de contato */}
           <Route path="/login" element={<Login />} />
           <Route element={<PrivateRoute />}>
             <Route path="/admin" element={<Admin />} />

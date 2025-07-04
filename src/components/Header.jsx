@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link as RouterLink, useNavigate, useLocation } from "react-router-dom";
 import { Link as ScrollLink, scroller } from "react-scroll";
-import { ShoppingCart, Menu, X } from "lucide-react"; // Removido User de lucide-react
+import { ShoppingCart, Menu, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCart } from "../context/CartContext";
 
@@ -37,8 +37,6 @@ const Header = () => {
           offset: -90,
         });
       }, 100);
-    } else if (location.pathname === "/" && !location.hash) {
-      // window.scrollTo(0, 0);
     }
   }, [location]);
 
@@ -50,27 +48,14 @@ const Header = () => {
     }`;
 
   const baseScrollAndRouterLinkClasses = `font-sans text-nude-text hover:text-nude-gold transition-colors duration-300 py-2 cursor-pointer`;
-
   const scrollLinkActiveClasses =
     "text-nude-gold font-semibold border-b-2 border-nude-gold";
-
   const iconButtonClasses =
     "text-nude-text hover:text-nude-gold transition-colors duration-300";
 
   const handleScrollToSectionMobile = (sectionId) => {
     setIsMobileMenuOpen(false);
-    if (location.pathname === "/" && !location.hash) {
-      scroller.scrollTo(sectionId, {
-        duration: 800,
-        delay: 0,
-        smooth: "easeInOutQuart",
-        offset: -90,
-      });
-    } else if (
-      location.pathname === "/" &&
-      location.hash &&
-      sectionId === location.hash.substring(1)
-    ) {
+    if (location.pathname === "/") {
       scroller.scrollTo(sectionId, {
         duration: 800,
         delay: 0,
@@ -106,13 +91,7 @@ const Header = () => {
           <RouterLink
             to="/"
             onClick={() => {
-              if (
-                location.pathname === "/" &&
-                location.hash !== "#hero" &&
-                location.hash !== ""
-              ) {
-                navigate("/");
-              } else if (location.pathname === "/") {
+              if (location.pathname === "/") {
                 window.scrollTo({ top: 0, behavior: "smooth" });
               }
             }}
@@ -134,7 +113,6 @@ const Header = () => {
             >
               Início
             </ScrollLink>
-            {/* TEXTO DO LINK ALTERADO DE "Perfumes" PARA "Produtos" */}
             <RouterLink to="/products" className={navLinkClasses("/products")}>
               Produtos
             </RouterLink>
@@ -149,20 +127,13 @@ const Header = () => {
             >
               Sobre Nós
             </ScrollLink>
-            <ScrollLink
-              to="contato-section"
-              spy={true}
-              smooth={true}
-              offset={-90}
-              duration={500}
-              className={baseScrollAndRouterLinkClasses}
-              activeClass={scrollLinkActiveClasses}
-            >
+
+            {/* ALTERADO: ScrollLink trocado por RouterLink */}
+            <RouterLink to="/contato" className={navLinkClasses("/contato")}>
               Contato
-            </ScrollLink>
+            </RouterLink>
           </nav>
 
-          {/* Ícones */}
           <div className="flex items-center space-x-4 md:space-x-5">
             <button
               onClick={() => navigate("/carrinho")}
@@ -202,7 +173,6 @@ const Header = () => {
               >
                 Início
               </button>
-              {/* TEXTO DO LINK ALTERADO DE "Perfumes" PARA "Produtos" */}
               <RouterLink
                 to="/products"
                 className={`${navLinkClasses("/products")} text-lg`}
@@ -216,12 +186,16 @@ const Header = () => {
               >
                 Sobre Nós
               </button>
-              <button
-                onClick={() => handleScrollToSectionMobile("contato-section")}
-                className={`font-sans text-nude-text hover:text-nude-gold transition-colors duration-300 py-2 text-lg`}
+
+              {/* ALTERADO: 'button' com scroll trocado por RouterLink */}
+              <RouterLink
+                to="/contato"
+                className={`${navLinkClasses("/contato")} text-lg`}
+                onClick={toggleMenu}
               >
                 Contato
-              </button>
+              </RouterLink>
+
               <RouterLink
                 to="/carrinho"
                 className={`${navLinkClasses(
