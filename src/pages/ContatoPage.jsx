@@ -21,7 +21,7 @@ const ContatoPage = () => {
     error: null,
   });
 
-  // CORREÇÃO FINAL APLICADA AQUI
+  // CORREÇÃO FINAL E DEFINITIVA APLICADA AQUI
   const { isLoaded, loadError } = useJsApiLoader({
     id: "google-map-script",
     googleMapsApiKey: import.meta.env.VITE_Maps_API_KEY,
@@ -53,9 +53,7 @@ const ContatoPage = () => {
   };
 
   const containerStyle = { width: "100%", height: "400px" };
-
   const center = { lat: -22.875136, lng: -42.340123 };
-
   const mapOptions = {
     streetViewControl: false,
     mapTypeControl: false,
@@ -163,7 +161,9 @@ const ContatoPage = () => {
               </div>
             </div>
             <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-              {loadError && <div>Erro ao carregar o mapa.</div>}
+              {loadError && (
+                <div>Erro ao carregar o mapa. {loadError.message}</div>
+              )}
               {isLoaded ? (
                 <GoogleMap
                   mapContainerStyle={containerStyle}
