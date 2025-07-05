@@ -8,6 +8,7 @@ import ServicesCallToAction from "./components/ServicesCallToAction"; // Importe
 import Footer from "./components/Footer";
 import { getProdutoDestaque } from "./utils/firebaseUtils"; // Importe a função
 import Video from "./components/video";
+import WhatsAppButton from "./components/WhatsAppButton";
 
 function App() {
   const [produtoDestaque, setProdutoDestaque] = useState(null);
@@ -50,6 +51,7 @@ function App() {
       <FeaturedProduct />{" "}
       {/* O FeaturedProduct também fará sua própria busca */}
       <Footer />
+      <WhatsAppButton />
     </>
   );
 }
