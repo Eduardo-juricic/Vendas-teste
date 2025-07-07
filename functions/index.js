@@ -58,6 +58,7 @@ exports.sendMail = onCall(
   {
     secrets: [SENDGRID_SECRET_NAME],
     region: "southamerica-east1",
+    // CORREÇÃO FINAL DE CORS: Usando a URL base do seu site na Vercel.
     cors: [/localhost:\d+/, "https://vendas-teste-alpha.vercel.app"],
   },
   async (request) => {
@@ -86,7 +87,10 @@ exports.sendMail = onCall(
 
     const msg = {
       to: "pri.ajuricic@gmail.com",
-      from: { name: "Contato Site Juridic", email: "pri.ajuricic@gmail.com" },
+      from: {
+        name: "Contato Site Juridic",
+        email: "pri.ajuricic@gmail.com",
+      },
       subject: `Nova mensagem do formulário de: ${nome}`,
       html: `<p><strong>Nome:</strong> ${nome}</p><p><strong>E-mail:</strong> ${email}</p><p><strong>Mensagem:</strong> ${mensagem}</p>`,
       replyTo: email,
@@ -112,8 +116,10 @@ exports.sendMail = onCall(
 // ====================================================================================
 // --- FUNÇÕES DO MERCADO PAGO (COM CORS E ESTRUTURA CORRIGIDOS) ---
 // ====================================================================================
+
 const commonMercadoPagoOptions = {
   secrets: [PROD_SECRET_NAME, TEST_SECRET_NAME],
+  // CORREÇÃO FINAL DE CORS: Usando a URL base do seu site na Vercel.
   cors: [/localhost:\d+/, "https://vendas-teste-alpha.vercel.app"],
 };
 
@@ -178,6 +184,7 @@ exports.createPaymentPreference = onCall(
   }
 );
 
+// Webhook não precisa de CORS, pois é chamado pelo servidor do Mercado Pago.
 exports.processPaymentNotification = onRequest(
   { secrets: [PROD_SECRET_NAME, TEST_SECRET_NAME] },
   async (req, res) => {
