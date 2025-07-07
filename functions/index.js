@@ -1,6 +1,6 @@
 // functions/index.js
 
-// --- IMPORTAÇÕES GERAIS (SINTAXE CORRIGIDA PARA V2) ---
+// --- IMPORTAÇÕES GERAIS ---
 const { onCall, onRequest } = require("firebase-functions/v2/https");
 const { setGlobalOptions } = require("firebase-functions/v2");
 const admin = require("firebase-admin");
@@ -8,20 +8,23 @@ const { logger } = require("firebase-functions");
 
 // --- IMPORTAÇÕES DOS SERVIÇOS ---
 const { MercadoPagoConfig, Preference, Payment } = require("mercadopago");
+const sgMail = require("@sendgrid/mail");
 
 // --- INICIALIZAÇÃO DO FIREBASE ADMIN ---
+// Garante que o app do Firebase seja inicializado apenas uma vez.
 if (admin.apps.length === 0) {
   admin.initializeApp();
 }
 
 // --- CONFIGURAÇÕES GLOBAIS DAS FUNÇÕES ---
+// Define a região padrão e outras opções para todas as funções.
 setGlobalOptions({
   region: "southamerica-east1",
   memory: "256MiB",
   timeoutSeconds: 60,
 });
 
-// --- NOMES DOS SECRETS ---
+// --- NOMES DOS SECRETS (Boas práticas) ---
 const PROD_SECRET_NAME = "MERCADOPAGO_ACCESS_TOKEN_PROD";
 const TEST_SECRET_NAME = "MERCADOPAGO_ACCESS_TOKEN_TEST";
 const SENDGRID_SECRET_NAME = "SENDGRID_API_KEY";
@@ -51,18 +54,15 @@ const getMercadoPagoClient = () => {
 };
 
 // ====================================================================================
-// --- FUNÇÃO DE ENVIO DE E-MAIL (COM CORS E SINTAXE CORRIGIDOS) ---
+// ✅ FUNÇÃO DE ENVIO DE E-MAIL (COM CORS CORRIGIDO)
 // ====================================================================================
-
 exports.sendMail = onCall(
   {
     secrets: [SENDGRID_SECRET_NAME],
-    region: "southamerica-east1",
-    // CORREÇÃO FINAL DE CORS: Usando a URL base do seu site na Vercel.
+    // A linha mais importante! Permite que seu site na Vercel e o localhost chamem esta função.
     cors: [/localhost:\d+/, "https://vendas-teste-alpha.vercel.app"],
   },
   async (request) => {
-    const sgMail = require("@sendgrid/mail");
     const apiKey = process.env[SENDGRID_SECRET_NAME];
 
     if (!apiKey || !apiKey.startsWith("SG.")) {
@@ -89,7 +89,7 @@ exports.sendMail = onCall(
       to: "pri.ajuricic@gmail.com",
       from: {
         name: "Contato Site Juridic",
-        email: "pri.ajuricic@gmail.com",
+        email: "pri.ajuricic@gmail.com", // Recomenda-se usar um e-mail verificado no SendGrid
       },
       subject: `Nova mensagem do formulário de: ${nome}`,
       html: `<p><strong>Nome:</strong> ${nome}</p><p><strong>E-mail:</strong> ${email}</p><p><strong>Mensagem:</strong> ${mensagem}</p>`,
@@ -114,12 +114,13 @@ exports.sendMail = onCall(
 );
 
 // ====================================================================================
-// --- FUNÇÕES DO MERCADO PAGO (COM CORS E ESTRUTURA CORRIGIDOS) ---
+// ✅ FUNÇÕES DO MERCADO PAGO (COM CORS CORRIGIDO)
 // ====================================================================================
 
+// Opções comuns para as funções do Mercado Pago que são chamadas pelo front-end.
 const commonMercadoPagoOptions = {
   secrets: [PROD_SECRET_NAME, TEST_SECRET_NAME],
-  // CORREÇÃO FINAL DE CORS: Usando a URL base do seu site na Vercel.
+  // A mesma regra de CORS se aplica aqui.
   cors: [/localhost:\d+/, "https://vendas-teste-alpha.vercel.app"],
 };
 
@@ -130,6 +131,7 @@ exports.createPaymentPreference = onCall(
     const { items, payerInfo, externalReference, backUrls, notificationUrl } =
       request.data;
 
+    // Validação de dados de entrada...
     if (!items || !Array.isArray(items) || items.length === 0) {
       throw new onCall.HttpsError(
         "invalid-argument",
@@ -140,6 +142,12 @@ exports.createPaymentPreference = onCall(
       throw new onCall.HttpsError(
         "invalid-argument",
         "As 'payerInfo' com 'email' são obrigatórias."
+      );
+    }
+    if (!backUrls || !backUrls.success || !backUrls.failure) {
+      throw new onCall.HttpsError(
+        "invalid-argument",
+        "As 'backUrls' são obrigatórias."
       );
     }
 
@@ -184,17 +192,25 @@ exports.createPaymentPreference = onCall(
   }
 );
 
-// Webhook não precisa de CORS, pois é chamado pelo servidor do Mercado Pago.
+// ====================================================================================
+// ✅ WEBHOOK DE NOTIFICAÇÃO (NÃO PRECISA DE CORS)
+// ====================================================================================
+
+// Esta função é chamada pelo servidor do Mercado Pago, não pelo navegador do usuário.
+// Por isso, usa `onRequest` e não precisa da configuração `cors`.
 exports.processPaymentNotification = onRequest(
   { secrets: [PROD_SECRET_NAME, TEST_SECRET_NAME] },
   async (req, res) => {
-    const client = getMercadoPagoClient();
     if (req.method !== "POST") {
       return res.status(405).send("Method Not Allowed.");
     }
 
+    logger.info("Webhook do Mercado Pago recebido:", req.body);
+    const client = getMercadoPagoClient();
+
     const type = req.body.type;
     const paymentIdFromBody = req.body.data?.id;
+
     if (type === "payment" && paymentIdFromBody) {
       try {
         const payment = new Payment(client);
@@ -227,6 +243,6 @@ exports.processPaymentNotification = onRequest(
         return res.status(500).send("Erro interno ao processar pagamento.");
       }
     }
-    return res.status(200).send("Notificação recebida, mas não processada.");
+    return res.status(200).send("Notificação recebida, mas não requer ação.");
   }
 );
