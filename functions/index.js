@@ -1,14 +1,14 @@
 // functions/index.js
 
-// --- IMPORTAÇÕES GERAIS ---
-const functions = require("firebase-functions/v2/https");
+// --- IMPORTAÇÕES GERAIS (SINTAXE CORRIGIDA) ---
+const { onCall, onRequest } = require("firebase-functions/v2/https");
 const { setGlobalOptions } = require("firebase-functions/v2");
 const admin = require("firebase-admin");
 const { logger } = require("firebase-functions");
 
 // --- IMPORTAÇÕES DOS SERVIÇOS ---
 const { MercadoPagoConfig, Preference, Payment } = require("mercadopago");
-// A linha 'require("@sendgrid/mail")' foi REMOVIDA daqui e será chamada dentro da função.
+// A linha 'require("@sendgrid/mail")' foi movida para dentro da função 'sendMail'.
 
 // --- INICIALIZAÇÃO DO FIREBASE ADMIN ---
 if (admin.apps.length === 0) {
@@ -28,7 +28,6 @@ const TEST_SECRET_NAME = "MERCADOPAGO_ACCESS_TOKEN_TEST";
 const SENDGRID_SECRET_NAME = "SENDGRID_API_KEY";
 
 // --- FUNÇÃO AUXILIAR PARA OBTER O CLIENTE DO MERCADO PAGO ---
-// Esta função agora contém a lógica de verificação, isolando o problema.
 const getMercadoPagoClient = () => {
   const isProductionEnvironment = !!process.env.K_SERVICE;
   let accessToken;
@@ -39,7 +38,7 @@ const getMercadoPagoClient = () => {
       logger.error(
         `ERRO CRÍTICO: Rodando em PRODUÇÃO mas o secret '${PROD_SECRET_NAME}' não foi encontrado.`
       );
-      throw new functions.HttpsError(
+      throw new onCall.HttpsError(
         "internal",
         `Configuração de pagamento de produção ausente.`
       );
@@ -53,16 +52,17 @@ const getMercadoPagoClient = () => {
 };
 
 // ====================================================================================
-// --- FUNÇÃO DE ENVIO DE E-MAIL COM SENDGRID (VERSÃO FINAL) ---
+// --- FUNÇÃO DE ENVIO DE E-MAIL (COM SINTAXE E CORS CORRIGIDOS) ---
 // ====================================================================================
 
-exports.sendMail = functions.onCall(
+exports.sendMail = onCall(
+  // <-- CORREÇÃO: Usa 'onCall' diretamente
   {
     secrets: [SENDGRID_SECRET_NAME],
     region: "southamerica-east1",
+    cors: [/localhost:\d+/, "https://vendas-teste-alpha.vercel.app"],
   },
   async (request) => {
-    // CORREÇÃO: O 'require' e a configuração da chave são feitos AQUI DENTRO.
     const sgMail = require("@sendgrid/mail");
     const apiKey = process.env[SENDGRID_SECRET_NAME];
 
@@ -70,7 +70,7 @@ exports.sendMail = functions.onCall(
       logger.error(
         "ERRO CRÍTICO EM SENDMAIL: SENDGRID_API_KEY não foi encontrada ou é inválida."
       );
-      throw new functions.HttpsError(
+      throw new onCall.HttpsError(
         "internal",
         "Erro de configuração do serviço de e-mail."
       );
@@ -80,27 +80,20 @@ exports.sendMail = functions.onCall(
     const { nome, email, mensagem } = request.data;
     if (!nome || !email || !mensagem) {
       logger.error("Erro em sendMail: Dados do formulário ausentes.");
-      throw new functions.HttpsError(
+      throw new onCall.HttpsError(
         "invalid-argument",
         "Os campos 'nome', 'email' e 'mensagem' são obrigatórios."
       );
     }
 
     const msg = {
-      to: "pri.ajuricic@gmail.com", // Seu e-mail de destino
+      to: "pri.ajuricic@gmail.com",
       from: {
-        name: "Contato Site", // O nome que aparecerá no e-mail
-        email: "pri.ajuricic@gmail.com", // IMPORTANTE: Seu e-mail verificado no SendGrid
+        name: "Contato Site Juridic",
+        email: "pri.ajuricic@gmail.com",
       },
       subject: `Nova mensagem do formulário de: ${nome}`,
-      html: `
-          <h1>Nova mensagem de contato recebida</h1>
-          <p><strong>Nome:</strong> ${nome}</p>
-          <p><strong>E-mail de resposta:</strong> ${email}</p>
-          <hr>
-          <p><strong>Mensagem:</strong></p>
-          <p>${mensagem}</p>
-        `,
+      html: `<p><strong>Nome:</strong> ${nome}</p><p><strong>E-mail:</strong> ${email}</p><p><strong>Mensagem:</strong> ${mensagem}</p>`,
       replyTo: email,
     };
 
@@ -113,7 +106,7 @@ exports.sendMail = functions.onCall(
         "Erro CRÍTICO ao enviar e-mail com SendGrid:",
         error.response?.body || error.message
       );
-      throw new functions.HttpsError(
+      throw new onCall.HttpsError(
         "internal",
         "Ocorreu um erro ao enviar o e-mail."
       );
@@ -122,30 +115,30 @@ exports.sendMail = functions.onCall(
 );
 
 // ====================================================================================
-// --- FUNÇÕES DO MERCADO PAGO (COM LÓGICA DE CLIENTE CORRIGIDA) ---
+// --- FUNÇÕES DO MERCADO PAGO (COM SINTAXE E CORS CORRIGIDOS) ---
 // ====================================================================================
 
 const commonMercadoPagoOptions = {
   secrets: [PROD_SECRET_NAME, TEST_SECRET_NAME],
+  cors: [/localhost:\d+/, "https://vendas-teste-alpha.vercel.app"],
 };
 
-exports.createPaymentPreference = functions.onCall(
+exports.createPaymentPreference = onCall(
+  // <-- CORREÇÃO: Usa 'onCall' diretamente
   commonMercadoPagoOptions,
   async (request) => {
-    // A verificação acontece aqui, de forma segura.
     const client = getMercadoPagoClient();
-    const data = request.data;
     const { items, payerInfo, externalReference, backUrls, notificationUrl } =
-      data;
+      request.data;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
-      throw new functions.HttpsError(
+      throw new onCall.HttpsError(
         "invalid-argument",
         "A lista de 'items' é obrigatória."
       );
     }
     if (!payerInfo || !payerInfo.email) {
-      throw new functions.HttpsError(
+      throw new onCall.HttpsError(
         "invalid-argument",
         "As 'payerInfo' com 'email' são obrigatórias."
       );
@@ -184,7 +177,7 @@ exports.createPaymentPreference = functions.onCall(
         "Erro ao criar preferência MP:",
         error.cause || error.message
       );
-      throw new functions.HttpsError(
+      throw new onCall.HttpsError(
         "internal",
         "Falha ao criar preferência de pagamento."
       );
@@ -192,10 +185,11 @@ exports.createPaymentPreference = functions.onCall(
   }
 );
 
-exports.processPaymentNotification = functions.onRequest(
-  commonMercadoPagoOptions,
+// onRequest não muda, mas a importação sim.
+exports.processPaymentNotification = onRequest(
+  // <-- CORREÇÃO: Usa 'onRequest' diretamente
+  { secrets: [PROD_SECRET_NAME, TEST_SECRET_NAME] },
   async (req, res) => {
-    // A verificação acontece aqui, de forma segura.
     const client = getMercadoPagoClient();
     if (req.method !== "POST") {
       return res.status(405).send("Method Not Allowed.");
