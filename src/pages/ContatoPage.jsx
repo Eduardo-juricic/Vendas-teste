@@ -2,10 +2,10 @@ import React, { useState, useEffect } from "react";
 import { GoogleMap, useJsApiLoader, MarkerF } from "@react-google-maps/api";
 import { motion, AnimatePresence } from "framer-motion";
 
-// --- IMPORTAÇÕES DO FIREBASE (COM 'app') ---
-import { db, app } from "../FirebaseConfig"; // Importa o 'app' diretamente
+// --- IMPORTAÇÕES DO FIREBASE (SIMPLIFICADAS) ---
+// Removemos as importações de 'app', 'getFunctions' e 'httpsCallable' pois não são mais necessárias aqui.
+import { db } from "../FirebaseConfig";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
-import { getFunctions, httpsCallable } from "firebase/functions";
 
 // --- IMPORTAÇÕES DOS ÍCONES ---
 import {
@@ -48,33 +48,32 @@ const ContatoPage = () => {
   };
 
   // =======================================================================
-  // --- LÓGICA FINAL DE SUBMISSÃO (COM REGIÃO CORRETA) ---
+  // ✅ NOVA LÓGICA DE SUBMISSÃO (SALVA DIRETO NO FIRESTORE)
+  // Esta função agora apenas salva a mensagem no banco de dados.
+  // A Cloud Function será acionada AUTOMATICAMENTE a partir desta ação.
   // =======================================================================
   const handleSubmit = async (e) => {
     e.preventDefault();
     setStatus({ loading: true, success: false, error: null });
 
     try {
-      // CORREÇÃO: Usa o 'app' importado para especificar a região.
-      const functions = getFunctions(app, "southamerica-east1");
-      const sendMail = httpsCallable(functions, "sendMail");
-
-      await sendMail(formData);
-
-      await addDoc(collection(db, "contatos"), {
+      // Tenta salvar os dados do formulário na nova coleção "mensagens".
+      await addDoc(collection(db, "mensagens"), {
         ...formData,
         dataEnvio: serverTimestamp(),
-        emailEnviado: true,
       });
 
+      // Se o salvamento no banco de dados deu certo, o processo do usuário terminou com sucesso.
       setStatus({ loading: false, success: true, error: null });
       setFormData({ nome: "", email: "", mensagem: "" });
 
+      // Limpa a mensagem de sucesso da tela após 3 segundos.
       setTimeout(() => {
         setStatus({ loading: false, success: false, error: null });
       }, 3000);
     } catch (error) {
-      console.error("Erro detalhado ao enviar mensagem: ", error);
+      // Se deu erro ao salvar no banco de dados, informa ao usuário.
+      console.error("Erro ao salvar mensagem no Firestore: ", error);
       setStatus({
         loading: false,
         success: false,
@@ -82,8 +81,6 @@ const ContatoPage = () => {
       });
     }
   };
-  // ... (O resto do seu código do ContatoPage.jsx continua igual)
-  // =======================================================================
 
   const containerStyle = { width: "100%", height: "400px" };
   const center = { lat: -22.875136, lng: -42.340123 };

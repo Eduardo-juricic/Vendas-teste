@@ -1,35 +1,101 @@
 // functions/index.js
 
-// --- IMPORTAÇÕES GERAIS ---
-const { onCall, onRequest } = require("firebase-functions/v2/https");
-const { setGlobalOptions } = require("firebase-functions/v2");
-const admin = require("firebase-admin");
-const { logger } = require("firebase-functions");
-
 // --- IMPORTAÇÕES DOS SERVIÇOS ---
+const admin = require("firebase-admin");
+const nodemailer = require("nodemailer");
 const { MercadoPagoConfig, Preference, Payment } = require("mercadopago");
-const sgMail = require("@sendgrid/mail");
+
+// --- IMPORTAÇÕES DA BIBLIOTECA FIREBASE FUNCTIONS V2 ---
+// Importamos tudo da versão mais nova e consistente
+const { onCall, onRequest } = require("firebase-functions/v2/https");
+const { onDocumentCreated } = require("firebase-functions/v2/firestore");
+const { logger } = require("firebase-functions");
+// ✅ IMPORTAÇÃO CORRETA PARA PARÂMETROS
+const { defineString } = require("firebase-functions/params");
 
 // --- INICIALIZAÇÃO DO FIREBASE ADMIN ---
-// Garante que o app do Firebase seja inicializado apenas uma vez.
 if (admin.apps.length === 0) {
   admin.initializeApp();
 }
 
-// --- CONFIGURAÇÕES GLOBAIS DAS FUNÇÕES ---
-// Define a região padrão e outras opções para todas as funções.
-setGlobalOptions({
-  region: "southamerica-east1",
-  memory: "256MiB",
-  timeoutSeconds: 60,
-});
+// ====================================================================================
+// SEÇÃO 1: CONFIGURAÇÃO E FUNÇÃO DE E-MAIL COM NODEMAILER (V2 E PARÂMETROS)
+// ====================================================================================
 
-// --- NOMES DOS SECRETS (Boas práticas) ---
+// ✅ DEFINIÇÃO DOS PARÂMETROS DE AMBIENTE
+// A função vai ler as credenciais destes parâmetros, que serão fornecidos no deploy.
+const GMAIL_EMAIL = defineString("GMAIL_EMAIL");
+const GMAIL_PASSWORD = defineString("GMAIL_PASSWORD");
+
+// ✅ FUNÇÃO DE E-MAIL REESCRITA COM SINTAXE V2
+// Esta função é acionada quando um novo documento é criado na coleção "mensagens".
+exports.enviarEmailDeContato = onDocumentCreated(
+  {
+    document: "mensagens/{mensagemId}",
+    region: "southamerica-east1",
+    memory: "256MiB",
+    // ✅ Informa à função que ela precisa dos parâmetros definidos acima
+    params: [GMAIL_EMAIL, GMAIL_PASSWORD],
+  },
+  async (event) => {
+    const snap = event.data;
+    if (!snap) {
+      logger.error("Nenhum dado recebido no evento de criação de mensagem.");
+      return;
+    }
+
+    // ✅ Cria o transportador de e-mail DENTRO da função, usando os parâmetros
+    const mailTransport = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: GMAIL_EMAIL.value(), // Lê o valor do parâmetro
+        pass: GMAIL_PASSWORD.value(), // Lê o valor do parâmetro
+      },
+    });
+
+    const dadosDaMensagem = snap.data();
+    const { nome, email, mensagem } = dadosDaMensagem;
+    logger.log(`Nova mensagem de ${nome} (${email}). Enviando notificação.`);
+
+    const mailOptions = {
+      from: `"Formulário do Site" <${GMAIL_EMAIL.value()}>`,
+      to: "pri.ajuricic@gmail.com",
+      subject: `Nova mensagem de contato de: ${nome}`,
+      html: `
+            <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+                <h2>Nova Mensagem do Site</h2>
+                <p>Você recebeu uma nova mensagem através do formulário de contato.</p>
+                <hr>
+                <p><strong>Nome:</strong> ${nome}</p>
+                <p><strong>E-mail do remetente:</strong> ${email}</p>
+                <p><strong>Mensagem:</strong></p>
+                <blockquote style="border-left: 4px solid #ccc; padding-left: 16px; margin: 0;">
+                  <p>${mensagem}</p>
+                </blockquote>
+            </div>
+        `,
+    };
+
+    try {
+      await mailTransport.sendMail(mailOptions);
+      logger.log("E-mail de notificação enviado com sucesso.");
+      return snap.ref.update({ statusEmail: "Enviado com sucesso" });
+    } catch (error) {
+      logger.error("Erro CRÍTICO ao enviar e-mail com Nodemailer:", error);
+      return snap.ref.update({
+        statusEmail: "Falha no envio",
+        erro: error.message,
+      });
+    }
+  }
+);
+
+// ====================================================================================
+// SEÇÃO 2: FUNÇÕES DO MERCADO PAGO (V2 - SEM ALTERAÇÃO)
+// ====================================================================================
 const PROD_SECRET_NAME = "MERCADOPAGO_ACCESS_TOKEN_PROD";
 const TEST_SECRET_NAME = "MERCADOPAGO_ACCESS_TOKEN_TEST";
-const SENDGRID_SECRET_NAME = "SENDGRID_API_KEY";
 
-// --- FUNÇÃO AUXILIAR PARA OBTER O CLIENTE DO MERCADO PAGO ---
 const getMercadoPagoClient = () => {
   const isProductionEnvironment = !!process.env.K_SERVICE;
   let accessToken;
@@ -53,86 +119,22 @@ const getMercadoPagoClient = () => {
   return new MercadoPagoConfig({ accessToken });
 };
 
-// ====================================================================================
-// ✅ FUNÇÃO DE ENVIO DE E-MAIL (COM CORS CORRIGIDO)
-// ====================================================================================
-exports.sendMail = onCall(
-  {
-    secrets: [SENDGRID_SECRET_NAME],
-    // A linha mais importante! Permite que seu site na Vercel e o localhost chamem esta função.
-    cors: [/localhost:\d+/, "https://vendas-teste-alpha.vercel.app"],
-  },
-  async (request) => {
-    // ✅ FORÇANDO UM REDEPLOY EM 07/07/2025
-    const apiKey = process.env[SENDGRID_SECRET_NAME];
-
-    if (!apiKey || !apiKey.startsWith("SG.")) {
-      logger.error(
-        "ERRO CRÍTICO EM SENDMAIL: SENDGRID_API_KEY não foi encontrada ou é inválida."
-      );
-      throw new onCall.HttpsError(
-        "internal",
-        "Erro de configuração do serviço de e-mail."
-      );
-    }
-    sgMail.setApiKey(apiKey);
-
-    const { nome, email, mensagem } = request.data;
-    if (!nome || !email || !mensagem) {
-      logger.error("Erro em sendMail: Dados do formulário ausentes.");
-      throw new onCall.HttpsError(
-        "invalid-argument",
-        "Os campos 'nome', 'email' e 'mensagem' são obrigatórios."
-      );
-    }
-
-    const msg = {
-      to: "pri.ajuricic@gmail.com",
-      from: {
-        name: "Contato Site Juridic",
-        email: "pri.ajuricic@gmail.com", // Recomenda-se usar um e-mail verificado no SendGrid
-      },
-      subject: `Nova mensagem do formulário de: ${nome}`,
-      html: `<p><strong>Nome:</strong> ${nome}</p><p><strong>E-mail:</strong> ${email}</p><p><strong>Mensagem:</strong> ${mensagem}</p>`,
-      replyTo: email,
-    };
-
-    try {
-      await sgMail.send(msg);
-      logger.info(`E-mail enviado com sucesso via SendGrid para ${msg.to}`);
-      return { success: true };
-    } catch (error) {
-      logger.error(
-        "Erro CRÍTICO ao enviar e-mail com SendGrid:",
-        error.response?.body || error.message
-      );
-      throw new onCall.HttpsError(
-        "internal",
-        "Ocorreu um erro ao enviar o e-mail."
-      );
-    }
-  }
-);
-
-// ====================================================================================
-// ✅ FUNÇÕES DO MERCADO PAGO (COM CORS CORRIGIDO)
-// ====================================================================================
-
-// Opções comuns para as funções do Mercado Pago que são chamadas pelo front-end.
-const commonMercadoPagoOptions = {
+// Opções comuns para as funções do Mercado Pago
+const mercadopagoHttpOptions = {
+  region: "southamerica-east1",
+  memory: "256MiB",
+  timeoutSeconds: 60,
   secrets: [PROD_SECRET_NAME, TEST_SECRET_NAME],
-  // A mesma regra de CORS se aplica aqui.
   cors: [/localhost:\d+/, "https://vendas-teste-alpha.vercel.app"],
 };
 
 exports.createPaymentPreference = onCall(
-  commonMercadoPagoOptions,
+  mercadopagoHttpOptions,
   async (request) => {
     const client = getMercadoPagoClient();
     const { items, payerInfo, externalReference, backUrls, notificationUrl } =
       request.data;
 
-    // Validação de dados de entrada...
     if (!items || !Array.isArray(items) || items.length === 0) {
       throw new onCall.HttpsError(
         "invalid-argument",
@@ -193,14 +195,13 @@ exports.createPaymentPreference = onCall(
   }
 );
 
-// ====================================================================================
-// ✅ WEBHOOK DE NOTIFICAÇÃO (NÃO PRECISA DE CORS)
-// ====================================================================================
-
-// Esta função é chamada pelo servidor do Mercado Pago, não pelo navegador do usuário.
-// Por isso, usa `onRequest` e não precisa da configuração `cors`.
 exports.processPaymentNotification = onRequest(
-  { secrets: [PROD_SECRET_NAME, TEST_SECRET_NAME] },
+  {
+    region: "southamerica-east1",
+    memory: "256MiB",
+    timeoutSeconds: 60,
+    secrets: [PROD_SECRET_NAME, TEST_SECRET_NAME],
+  },
   async (req, res) => {
     if (req.method !== "POST") {
       return res.status(405).send("Method Not Allowed.");
@@ -208,7 +209,6 @@ exports.processPaymentNotification = onRequest(
 
     logger.info("Webhook do Mercado Pago recebido:", req.body);
     const client = getMercadoPagoClient();
-
     const type = req.body.type;
     const paymentIdFromBody = req.body.data?.id;
 
