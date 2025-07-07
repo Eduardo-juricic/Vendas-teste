@@ -1,6 +1,7 @@
 // functions/index.js
 
-// --- IMPORTAÇÕES GERAIS (SINTAXE CORRIGIDA) ---
+// --- IMPORTAÇÕES GERAIS ---
+const functions = require("firebase-functions/v2");
 const { onCall, onRequest } = require("firebase-functions/v2/https");
 const { setGlobalOptions } = require("firebase-functions/v2");
 const admin = require("firebase-admin");
@@ -8,7 +9,6 @@ const { logger } = require("firebase-functions");
 
 // --- IMPORTAÇÕES DOS SERVIÇOS ---
 const { MercadoPagoConfig, Preference, Payment } = require("mercadopago");
-// A linha 'require("@sendgrid/mail")' foi movida para dentro da função 'sendMail'.
 
 // --- INICIALIZAÇÃO DO FIREBASE ADMIN ---
 if (admin.apps.length === 0) {
@@ -52,14 +52,14 @@ const getMercadoPagoClient = () => {
 };
 
 // ====================================================================================
-// --- FUNÇÃO DE ENVIO DE E-MAIL (COM SINTAXE E CORS CORRIGIDOS) ---
+// --- FUNÇÃO DE ENVIO DE E-MAIL (COM CORS CORRIGIDO) ---
 // ====================================================================================
 
 exports.sendMail = onCall(
-  // <-- CORREÇÃO: Usa 'onCall' diretamente
   {
     secrets: [SENDGRID_SECRET_NAME],
     region: "southamerica-east1",
+    // ++++ CORREÇÃO DE CORS PARA SEU SITE NA VERCEL ++++
     cors: [/localhost:\d+/, "https://vendas-teste-alpha.vercel.app"],
   },
   async (request) => {
@@ -115,16 +115,16 @@ exports.sendMail = onCall(
 );
 
 // ====================================================================================
-// --- FUNÇÕES DO MERCADO PAGO (COM SINTAXE E CORS CORRIGIDOS) ---
+// --- FUNÇÕES DO MERCADO PAGO (COM CORS CORRIGIDO) ---
 // ====================================================================================
 
 const commonMercadoPagoOptions = {
   secrets: [PROD_SECRET_NAME, TEST_SECRET_NAME],
+  // ++++ CORREÇÃO DE CORS PARA SEU SITE NA VERCEL ++++
   cors: [/localhost:\d+/, "https://vendas-teste-alpha.vercel.app"],
 };
 
 exports.createPaymentPreference = onCall(
-  // <-- CORREÇÃO: Usa 'onCall' diretamente
   commonMercadoPagoOptions,
   async (request) => {
     const client = getMercadoPagoClient();
@@ -185,9 +185,8 @@ exports.createPaymentPreference = onCall(
   }
 );
 
-// onRequest não muda, mas a importação sim.
+// Webhook não precisa de CORS, pois é chamado pelo servidor do Mercado Pago.
 exports.processPaymentNotification = onRequest(
-  // <-- CORREÇÃO: Usa 'onRequest' diretamente
   { secrets: [PROD_SECRET_NAME, TEST_SECRET_NAME] },
   async (req, res) => {
     const client = getMercadoPagoClient();
