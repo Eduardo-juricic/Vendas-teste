@@ -63,6 +63,7 @@ exports.sendMail = onCall(
     cors: [/localhost:\d+/, "https://vendas-teste-alpha.vercel.app"],
   },
   async (request) => {
+    // ✅ FORÇANDO UM REDEPLOY EM 07/07/2025
     const apiKey = process.env[SENDGRID_SECRET_NAME];
 
     if (!apiKey || !apiKey.startsWith("SG.")) {
