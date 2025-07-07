@@ -1,9 +1,22 @@
 import React, { useState, useEffect } from "react";
 import { GoogleMap, useJsApiLoader, MarkerF } from "@react-google-maps/api";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+
+// --- IMPORTAÇÕES DO FIREBASE ---
 import { db } from "../FirebaseConfig";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
-import { Mail, Phone, MapPin, Send, Loader, CheckCircle } from "lucide-react";
+import { getFunctions, httpsCallable } from "firebase/functions";
+
+// --- IMPORTAÇÕES DOS ÍCONES ---
+import {
+  Mail,
+  Phone,
+  MapPin,
+  Send,
+  Loader,
+  CheckCircle,
+  XCircle,
+} from "lucide-react";
 
 const ContatoPage = () => {
   useEffect(() => {
@@ -21,7 +34,7 @@ const ContatoPage = () => {
     error: null,
   });
 
-  // NOME DA VARIÁVEL CORRIGIDO PARA O PADRÃO
+  // Carregamento do mapa do Google
   const { isLoaded, loadError } = useJsApiLoader({
     id: "google-map-script",
     googleMapsApiKey: import.meta.env.VITE_Maps_API_KEY,
@@ -30,27 +43,53 @@ const ContatoPage = () => {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prevState) => ({ ...prevState, [name]: value }));
+    // Limpa o status de sucesso/erro ao começar a digitar novamente
+    if (status.success || status.error) {
+      setStatus({ loading: false, success: false, error: null });
+    }
   };
 
+  // =======================================================================
+  // --- LÓGICA FINAL DE SUBMISSÃO (CHAMA A CLOUD FUNCTION) ---
+  // =======================================================================
   const handleSubmit = async (e) => {
     e.preventDefault();
     setStatus({ loading: true, success: false, error: null });
+
     try {
+      // 1. Inicializa e aponta para a Cloud Function 'sendMail'
+      const functions = getFunctions();
+      const sendMail = httpsCallable(functions, "sendMail");
+
+      // 2. Chama a função da nuvem para enviar o e-mail com os dados do formulário
+      await sendMail(formData);
+
+      // 3. (Opcional, mas recomendado) Salva uma cópia no Firestore como backup
       await addDoc(collection(db, "contatos"), {
         ...formData,
         dataEnvio: serverTimestamp(),
+        emailEnviado: true,
       });
+
+      // 4. Atualiza a interface para o estado de SUCESSO
       setStatus({ loading: false, success: true, error: null });
       setFormData({ nome: "", email: "", mensagem: "" });
+
+      // 5. Reseta o botão para o estado normal após 3 segundos
+      setTimeout(() => {
+        setStatus({ loading: false, success: false, error: null });
+      }, 3000);
     } catch (error) {
-      console.error("Erro ao enviar mensagem: ", error);
+      // Em caso de erro na chamada da função ou no salvamento
+      console.error("Erro detalhado ao enviar mensagem: ", error);
       setStatus({
         loading: false,
         success: false,
-        error: "Falha ao enviar a mensagem. Tente novamente.",
+        error: "Falha ao enviar. Tente novamente mais tarde.",
       });
     }
   };
+  // =======================================================================
 
   const containerStyle = { width: "100%", height: "400px" };
   const center = { lat: -22.875136, lng: -42.340123 };
@@ -59,6 +98,33 @@ const ContatoPage = () => {
     mapTypeControl: false,
     fullscreenControl: false,
   };
+
+  // --- Lógica para controlar a aparência dinâmica do botão ---
+  const isSubmitting = status.loading;
+  const isSuccess = status.success;
+  const isError = !!status.error;
+
+  const buttonClass = isSuccess
+    ? "bg-green-500" // Cor de sucesso
+    : isError
+    ? "bg-red-500" // Cor de erro
+    : "bg-nude-gold hover:bg-nude-gold-dark"; // Cor padrão
+
+  const buttonText = isSubmitting
+    ? "Enviando..."
+    : isSuccess
+    ? "Enviado!"
+    : isError
+    ? "Tente Novamente"
+    : "Enviar Mensagem";
+
+  const ButtonIcon = isSubmitting
+    ? Loader
+    : isSuccess
+    ? CheckCircle
+    : isError
+    ? XCircle
+    : Send;
 
   return (
     <div className="bg-nude-off-white">
@@ -115,26 +181,46 @@ const ContatoPage = () => {
                 rows="5"
                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nude-gold-light"
               ></textarea>
-              <button
+
+              {/* --- BOTÃO FINAL COM ANIMAÇÕES --- */}
+              <motion.button
                 type="submit"
-                disabled={status.loading}
-                className="w-full bg-nude-gold hover:bg-nude-gold-dark text-white font-bold py-3 px-6 rounded-lg text-lg shadow-lg flex items-center justify-center transition-all duration-300 disabled:opacity-50"
+                disabled={status.loading || status.success}
+                className={`w-full text-white font-bold py-3 px-6 rounded-lg text-lg shadow-lg flex items-center justify-center transition-colors duration-300 disabled:opacity-70 ${buttonClass}`}
+                whileTap={{ scale: 0.95 }}
+                animate={isError ? { x: [-5, 5, -5, 5, 0] } : {}}
+                transition={isError ? { duration: 0.3 } : {}}
               >
-                {status.loading ? (
-                  <Loader className="animate-spin mr-2" />
-                ) : (
-                  <Send className="mr-2" />
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={buttonText}
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 10 }}
+                    transition={{ duration: 0.2 }}
+                    className="flex items-center justify-center"
+                  >
+                    <ButtonIcon
+                      className={`mr-2 ${isSubmitting && "animate-spin"}`}
+                    />
+                    {buttonText}
+                  </motion.div>
+                </AnimatePresence>
+              </motion.button>
+
+              {/* --- MENSAGENS DE STATUS VISÍVEIS AO USUÁRIO --- */}
+              <div className="h-6 text-center">
+                {isSuccess && (
+                  <p className="text-green-600 flex items-center justify-center">
+                    <CheckCircle className="mr-2" /> Mensagem enviada com
+                    sucesso!
+                  </p>
                 )}
-                {status.loading ? "Enviando..." : "Enviar Mensagem"}
-              </button>
-              {status.success && (
-                <p className="text-green-600 flex items-center">
-                  <CheckCircle className="mr-2" /> Mensagem enviada com sucesso!
-                </p>
-              )}
-              {status.error && <p className="text-red-500">{status.error}</p>}
+                {isError && <p className="text-red-500">{status.error}</p>}
+              </div>
             </form>
           </motion.div>
+
           <motion.div
             className="space-y-8"
             initial={{ opacity: 0, x: 30 }}
@@ -185,4 +271,5 @@ const ContatoPage = () => {
     </div>
   );
 };
+
 export default ContatoPage;
