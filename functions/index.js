@@ -8,7 +8,6 @@ const { logger } = require("firebase-functions");
 
 // --- IMPORTAÇÕES DOS SERVIÇOS ---
 const { MercadoPagoConfig, Preference, Payment } = require("mercadopago");
-// A linha 'require("@sendgrid/mail")' foi movida para dentro da função 'sendMail' para garantir o deploy.
 
 // --- INICIALIZAÇÃO DO FIREBASE ADMIN ---
 if (admin.apps.length === 0) {
@@ -28,7 +27,6 @@ const TEST_SECRET_NAME = "MERCADOPAGO_ACCESS_TOKEN_TEST";
 const SENDGRID_SECRET_NAME = "SENDGRID_API_KEY";
 
 // --- FUNÇÃO AUXILIAR PARA OBTER O CLIENTE DO MERCADO PAGO ---
-// CORREÇÃO: Esta função isola a lógica de verificação para que ela não quebre o deploy.
 const getMercadoPagoClient = () => {
   const isProductionEnvironment = !!process.env.K_SERVICE;
   let accessToken;
@@ -39,7 +37,6 @@ const getMercadoPagoClient = () => {
       logger.error(
         `ERRO CRÍTICO: Rodando em PRODUÇÃO mas o secret '${PROD_SECRET_NAME}' não foi encontrado.`
       );
-      // Usa onCall.HttpsError para consistência com as funções que vão chamá-la.
       throw new onCall.HttpsError(
         "internal",
         `Configuração de pagamento de produção ausente.`
@@ -58,15 +55,12 @@ const getMercadoPagoClient = () => {
 // ====================================================================================
 
 exports.sendMail = onCall(
-  // CORREÇÃO: Usa 'onCall' importado diretamente.
   {
     secrets: [SENDGRID_SECRET_NAME],
     region: "southamerica-east1",
-    // CORREÇÃO DE CORS: Permite que seu site na Vercel chame esta função.
     cors: [/localhost:\d+/, "https://vendas-teste-alpha.vercel.app"],
   },
   async (request) => {
-    // CORREÇÃO DE DEPLOY: O require e a configuração são feitos aqui dentro.
     const sgMail = require("@sendgrid/mail");
     const apiKey = process.env[SENDGRID_SECRET_NAME];
 
@@ -92,10 +86,7 @@ exports.sendMail = onCall(
 
     const msg = {
       to: "pri.ajuricic@gmail.com",
-      from: {
-        name: "Contato Site Juridic",
-        email: "pri.ajuricic@gmail.com", // IMPORTANTE: Este deve ser um e-mail verificado como remetente no SendGrid.
-      },
+      from: { name: "Contato Site Juridic", email: "pri.ajuricic@gmail.com" },
       subject: `Nova mensagem do formulário de: ${nome}`,
       html: `<p><strong>Nome:</strong> ${nome}</p><p><strong>E-mail:</strong> ${email}</p><p><strong>Mensagem:</strong> ${mensagem}</p>`,
       replyTo: email,
@@ -121,18 +112,14 @@ exports.sendMail = onCall(
 // ====================================================================================
 // --- FUNÇÕES DO MERCADO PAGO (COM CORS E ESTRUTURA CORRIGIDOS) ---
 // ====================================================================================
-
 const commonMercadoPagoOptions = {
   secrets: [PROD_SECRET_NAME, TEST_SECRET_NAME],
-  // CORREÇÃO DE CORS: Permissão para o site da Vercel.
   cors: [/localhost:\d+/, "https://vendas-teste-alpha.vercel.app"],
 };
 
 exports.createPaymentPreference = onCall(
-  // CORREÇÃO: Usa 'onCall' importado diretamente.
   commonMercadoPagoOptions,
   async (request) => {
-    // CORREÇÃO: A lógica de verificação acontece aqui, de forma segura.
     const client = getMercadoPagoClient();
     const { items, payerInfo, externalReference, backUrls, notificationUrl } =
       request.data;
@@ -191,12 +178,9 @@ exports.createPaymentPreference = onCall(
   }
 );
 
-// Webhook não precisa de CORS, pois é chamado pelo servidor do Mercado Pago.
 exports.processPaymentNotification = onRequest(
-  // CORREÇÃO: Usa 'onRequest' importado diretamente.
   { secrets: [PROD_SECRET_NAME, TEST_SECRET_NAME] },
   async (req, res) => {
-    // CORREÇÃO: A lógica de verificação acontece aqui.
     const client = getMercadoPagoClient();
     if (req.method !== "POST") {
       return res.status(405).send("Method Not Allowed.");

@@ -2,8 +2,8 @@ import React, { useState, useEffect } from "react";
 import { GoogleMap, useJsApiLoader, MarkerF } from "@react-google-maps/api";
 import { motion, AnimatePresence } from "framer-motion";
 
-// --- IMPORTAÇÕES DO FIREBASE ---
-import { db } from "../FirebaseConfig";
+// --- IMPORTAÇÕES DO FIREBASE (COM 'app') ---
+import { db, app } from "../FirebaseConfig"; // Importa o 'app' diretamente
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
 
@@ -34,7 +34,6 @@ const ContatoPage = () => {
     error: null,
   });
 
-  // Carregamento do mapa do Google
   const { isLoaded, loadError } = useJsApiLoader({
     id: "google-map-script",
     googleMapsApiKey: import.meta.env.VITE_Maps_API_KEY,
@@ -43,44 +42,38 @@ const ContatoPage = () => {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prevState) => ({ ...prevState, [name]: value }));
-    // Limpa o status de sucesso/erro ao começar a digitar novamente
     if (status.success || status.error) {
       setStatus({ loading: false, success: false, error: null });
     }
   };
 
   // =======================================================================
-  // --- LÓGICA FINAL DE SUBMISSÃO (CHAMA A CLOUD FUNCTION) ---
+  // --- LÓGICA FINAL DE SUBMISSÃO (COM REGIÃO CORRETA) ---
   // =======================================================================
   const handleSubmit = async (e) => {
     e.preventDefault();
     setStatus({ loading: true, success: false, error: null });
 
     try {
-      // 1. Inicializa e aponta para a Cloud Function 'sendMail'
-      const functions = getFunctions();
+      // CORREÇÃO: Usa o 'app' importado para especificar a região.
+      const functions = getFunctions(app, "southamerica-east1");
       const sendMail = httpsCallable(functions, "sendMail");
 
-      // 2. Chama a função da nuvem para enviar o e-mail com os dados do formulário
       await sendMail(formData);
 
-      // 3. (Opcional, mas recomendado) Salva uma cópia no Firestore como backup
       await addDoc(collection(db, "contatos"), {
         ...formData,
         dataEnvio: serverTimestamp(),
         emailEnviado: true,
       });
 
-      // 4. Atualiza a interface para o estado de SUCESSO
       setStatus({ loading: false, success: true, error: null });
       setFormData({ nome: "", email: "", mensagem: "" });
 
-      // 5. Reseta o botão para o estado normal após 3 segundos
       setTimeout(() => {
         setStatus({ loading: false, success: false, error: null });
       }, 3000);
     } catch (error) {
-      // Em caso de erro na chamada da função ou no salvamento
       console.error("Erro detalhado ao enviar mensagem: ", error);
       setStatus({
         loading: false,
@@ -89,6 +82,7 @@ const ContatoPage = () => {
       });
     }
   };
+  // ... (O resto do seu código do ContatoPage.jsx continua igual)
   // =======================================================================
 
   const containerStyle = { width: "100%", height: "400px" };
@@ -99,17 +93,15 @@ const ContatoPage = () => {
     fullscreenControl: false,
   };
 
-  // --- Lógica para controlar a aparência dinâmica do botão ---
   const isSubmitting = status.loading;
   const isSuccess = status.success;
   const isError = !!status.error;
 
   const buttonClass = isSuccess
-    ? "bg-green-500" // Cor de sucesso
+    ? "bg-green-500"
     : isError
-    ? "bg-red-500" // Cor de erro
-    : "bg-nude-gold hover:bg-nude-gold-dark"; // Cor padrão
-
+    ? "bg-red-500"
+    : "bg-nude-gold hover:bg-nude-gold-dark";
   const buttonText = isSubmitting
     ? "Enviando..."
     : isSuccess
@@ -117,7 +109,6 @@ const ContatoPage = () => {
     : isError
     ? "Tente Novamente"
     : "Enviar Mensagem";
-
   const ButtonIcon = isSubmitting
     ? Loader
     : isSuccess
@@ -181,8 +172,6 @@ const ContatoPage = () => {
                 rows="5"
                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nude-gold-light"
               ></textarea>
-
-              {/* --- BOTÃO FINAL COM ANIMAÇÕES --- */}
               <motion.button
                 type="submit"
                 disabled={status.loading || status.success}
@@ -207,20 +196,18 @@ const ContatoPage = () => {
                   </motion.div>
                 </AnimatePresence>
               </motion.button>
-
-              {/* --- MENSAGENS DE STATUS VISÍVEIS AO USUÁRIO --- */}
               <div className="h-6 text-center">
                 {isSuccess && (
                   <p className="text-green-600 flex items-center justify-center">
+                    {" "}
                     <CheckCircle className="mr-2" /> Mensagem enviada com
-                    sucesso!
+                    sucesso!{" "}
                   </p>
                 )}
                 {isError && <p className="text-red-500">{status.error}</p>}
               </div>
             </form>
           </motion.div>
-
           <motion.div
             className="space-y-8"
             initial={{ opacity: 0, x: 30 }}
@@ -229,20 +216,24 @@ const ContatoPage = () => {
           >
             <div className="bg-white p-6 rounded-xl shadow-lg">
               <h3 className="text-xl font-serif font-semibold text-nude-text mb-4">
-                Nossas Informações
+                {" "}
+                Nossas Informações{" "}
               </h3>
               <div className="space-y-4 font-sans">
                 <p className="flex items-center text-nude-text-light">
+                  {" "}
                   <MapPin className="w-5 h-5 mr-3 text-nude-gold" /> Araruama,
-                  RJ, Brasil
+                  RJ, Brasil{" "}
                 </p>
                 <p className="flex items-center text-nude-text-light">
+                  {" "}
                   <Phone className="w-5 h-5 mr-3 text-nude-gold" /> (22)
-                  99999-8888
+                  99999-8888{" "}
                 </p>
                 <p className="flex items-center text-nude-text-light">
+                  {" "}
                   <Mail className="w-5 h-5 mr-3 text-nude-gold" />{" "}
-                  contato@artesanatostore.com
+                  contato@artesanatostore.com{" "}
                 </p>
               </div>
             </div>
@@ -257,11 +248,13 @@ const ContatoPage = () => {
                   zoom={15}
                   options={mapOptions}
                 >
-                  <MarkerF position={center} />
+                  {" "}
+                  <MarkerF position={center} />{" "}
                 </GoogleMap>
               ) : (
                 <div className="w-full h-[400px] bg-gray-200 flex items-center justify-center">
-                  <Loader className="animate-spin text-nude-gold" />
+                  {" "}
+                  <Loader className="animate-spin text-nude-gold" />{" "}
                 </div>
               )}
             </div>
