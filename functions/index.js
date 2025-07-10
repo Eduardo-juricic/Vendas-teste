@@ -247,3 +247,108 @@ exports.processPaymentNotification = onRequest(
     return res.status(200).send("Notificação recebida, mas não requer ação.");
   }
 );
+
+// Adicione este código ao final do seu arquivo functions/index.js
+
+/**
+ * Helper para escapar campos para o formato CSV.
+ * Garante que vírgulas e aspas dentro dos campos não quebrem o arquivo.
+ * @param {any} field O dado a ser escapado.
+ * @returns {string} O dado formatado para CSV.
+ */
+const escapeCsvField = (field) => {
+  let fieldStr = String(field || "").trim();
+  // Se o campo contém vírgula, aspas ou quebra de linha, envolve com aspas duplas.
+  if (
+    fieldStr.includes(",") ||
+    fieldStr.includes('"') ||
+    fieldStr.includes("\n")
+  ) {
+    // Escapa as aspas duplas existentes dentro do campo duplicando-as.
+    fieldStr = fieldStr.replace(/"/g, '""');
+    return `"${fieldStr}"`;
+  }
+  return fieldStr;
+};
+
+/**
+ * Função HTTP que gera um feed de produtos em formato CSV para o Meta Commerce.
+ * Este endpoint será acessado pela Meta para sincronizar seu catálogo.
+ */
+exports.gerarCatalogoMeta = onRequest(
+  // Opções da função
+  {
+    region: "southamerica-east1", // Mesma região das suas outras funções
+    memory: "256MiB",
+  },
+  async (req, res) => {
+    try {
+      // 1. Define o cabeçalho do CSV com os campos exigidos pela Meta.
+      const headers = [
+        "id",
+        "title",
+        "description",
+        "availability",
+        "condition",
+        "price",
+        "link",
+        "image_link",
+        "brand",
+      ];
+
+      const siteUrl = "https://vendas-teste-alpha.vercel.app"; // IMPORTANTE: Substitua pelo seu domínio quando tiver um!
+
+      // 2. Busca todos os documentos da coleção 'produtos' no Firestore.
+      const produtosSnapshot = await admin
+        .firestore()
+        .collection("produtos")
+        .get();
+
+      const rows = produtosSnapshot.docs.map((doc) => {
+        const produto = doc.data();
+
+        // 3. Define o preço final, dando prioridade ao preço promocional se for válido.
+        const precoFinal =
+          produto.preco_promocional &&
+          Number(produto.preco_promocional) < Number(produto.preco)
+            ? Number(produto.preco_promocional)
+            : Number(produto.preco);
+
+        // 4. Mapeia os dados do seu produto para o formato da Meta.
+        const productData = {
+          id: doc.id,
+          title: produto.nome || "",
+          description:
+            produto.descricao || "Confira este incrível produto da Nude.",
+          availability: "in stock",
+          condition: "new",
+          price: `${precoFinal.toFixed(2)} BRL`,
+          link: `${siteUrl}/produto/${doc.id}`, // Cria o link direto para a página do produto
+          image_link: produto.imagem || "",
+          brand: "Nude",
+        };
+
+        // 5. Cria uma linha do CSV, escapando cada campo corretamente.
+        return headers
+          .map((header) => escapeCsvField(productData[header]))
+          .join(",");
+      });
+
+      // 6. Combina cabeçalho e linhas para formar o conteúdo CSV completo.
+      const csvContent = [headers.join(","), ...rows].join("\n");
+
+      // 7. Define os cabeçalhos da resposta HTTP para que a Meta entenda que é um arquivo CSV.
+      res.setHeader("Content-Type", "text/csv");
+      res.setHeader(
+        "Content-Disposition",
+        'attachment; filename="meta_catalog.csv"'
+      );
+
+      // 8. Envia o conteúdo CSV como resposta.
+      res.status(200).send(csvContent);
+    } catch (error) {
+      logger.error("Erro ao gerar catálogo para Meta:", error);
+      res.status(500).send("Erro interno ao gerar o catálogo de produtos.");
+    }
+  }
+);
