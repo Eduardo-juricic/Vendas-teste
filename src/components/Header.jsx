@@ -98,7 +98,7 @@ const Header = () => {
             className="text-3xl md:text-4xl font-serif font-bold hover:opacity-80 transition-opacity"
             style={{ color: "#C6A98E" }}
           >
-            Nude
+            Loja perfumaria
           </RouterLink>
 
           <nav className="hidden md:flex space-x-8 items-center">
