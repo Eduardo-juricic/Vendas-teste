@@ -70,7 +70,7 @@ function Video() {
             className="text-4xl md:text-5xl font-serif font-bold text-nude-gold-dark"
             variants={videoItemVariants}
           >
-            Revelando a Magia Nude
+            Revelando a Magia
           </motion.h2>
         </div>
 
